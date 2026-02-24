@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import UTC, datetime
 from pathlib import Path
 
 DB_PATH = Path("dekho.sqlite3")
@@ -49,17 +50,34 @@ def init_db() -> None:
         )
 
 
-def upsert_track(track_id: str, filepath: str) -> None:
+def upsert_track(
+    track_id: str,
+    filepath: str,
+    title: str | None = None,
+    artist: str | None = None,
+    duration: float | None = None,
+    url: str | None = None,
+    date_created: str | None = None,
+) -> None:
     # Ensures DB/tables are recreated if file was deleted while server is running.
     init_db()
+    date_added = datetime.now(UTC).isoformat()
     with get_connection() as connection:
         connection.execute(
             """
-            INSERT INTO tracks_file_data (track_id, filepath)
-            VALUES (?, ?)
-            ON CONFLICT(track_id) DO UPDATE SET filepath = excluded.filepath
+            INSERT INTO tracks_file_data (
+                track_id, filepath, title, artist, duration, url, date_created, date_added
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(track_id) DO UPDATE SET
+                filepath = excluded.filepath,
+                title = excluded.title,
+                artist = excluded.artist,
+                duration = excluded.duration,
+                url = excluded.url,
+                date_created = excluded.date_created
             """,
-            (track_id, filepath),
+            (track_id, filepath, title, artist, duration, url, date_created, date_added),
         )
 
 
@@ -74,3 +92,28 @@ def get_all_tracks_file_data() -> list[dict[str, str | None]]:
         ).fetchall()
 
     return [{"track_id": row[0], "filepath": row[1]} for row in rows]
+
+
+def get_track_details(track_id: str) -> dict[str, str | float | None] | None:
+    init_db()
+    with get_connection() as connection:
+        row = connection.execute(
+            """
+            SELECT track_id, title, url, filepath, duration, date_created
+            FROM tracks_file_data
+            WHERE track_id = ?
+            """,
+            (track_id,),
+        ).fetchone()
+
+    if row is None:
+        return None
+
+    return {
+        "track_id": row[0],
+        "title": row[1],
+        "url": row[2],
+        "filepath": row[3],
+        "duration": row[4],
+        "date_created": row[5],
+    }

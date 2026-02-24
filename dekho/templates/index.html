@@ -22,7 +22,7 @@
         {% if tracks %}
           <ul class="track-items">
             {% for track in tracks %}
-              <li class="track-item">
+              <li class="track-item" data-track-id="{{ track.track_id }}" tabindex="0">
                 <h2 class="track-path">{{ track.filepath }}</h2>
                 <p class="track-id">{{ track.track_id }}</p>
               </li>
@@ -34,7 +34,71 @@
       </section>
     </aside>
 
-    <section id="content-panel" aria-label="Details panel"></section>
+    <section id="content-panel" aria-label="Details panel">
+      <p class="empty-state">Select a track to view details.</p>
+    </section>
   </main>
+  <script>
+    const trackItems = document.querySelectorAll(".track-item");
+    const contentPanel = document.getElementById("content-panel");
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (char) => (
+        {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[char]
+      ));
+    }
+
+    function renderDetails(data) {
+      const title = data.title ?? "";
+      const trackId = data.track_id ?? "";
+      const url = data.url ?? "";
+      const filepath = data.filepath ?? "";
+      const duration = data.duration ?? "";
+      const dateCreated = data.date_created ?? "";
+
+      contentPanel.innerHTML = `
+        <header class="panel-header"><h2>${escapeHtml(title || "Untitled Track")}</h2></header>
+        <dl class="track-details">
+          <div><dt>track_id</dt><dd>${escapeHtml(trackId)}</dd></div>
+          <div><dt>url</dt><dd>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>` : "-"}</dd></div>
+          <div><dt>filepath</dt><dd>${escapeHtml(filepath)}</dd></div>
+          <div><dt>duration</dt><dd>${escapeHtml(duration)}</dd></div>
+          <div><dt>date_created</dt><dd>${escapeHtml(dateCreated)}</dd></div>
+        </dl>
+      `;
+    }
+
+    async function loadTrackDetails(trackId, item) {
+      trackItems.forEach((trackItem) => trackItem.classList.remove("is-active"));
+      item.classList.add("is-active");
+      contentPanel.innerHTML = '<p class="empty-state">Loading track details...</p>';
+
+      try {
+        const response = await fetch(`/api/tracks/${encodeURIComponent(trackId)}`);
+        if (!response.ok) {
+          throw new Error("Unable to load track details.");
+        }
+        const data = await response.json();
+        renderDetails(data);
+      } catch (error) {
+        contentPanel.innerHTML = `<p class="empty-state">${escapeHtml(error.message || "Unable to load track details.")}</p>`;
+      }
+    }
+
+    trackItems.forEach((item) => {
+      const trackId = item.dataset.trackId;
+      if (!trackId) {
+        return;
+      }
+
+      item.addEventListener("click", () => loadTrackDetails(trackId, item));
+      item.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          loadTrackDetails(trackId, item);
+        }
+      });
+    });
+  </script>
 </body>
 </html>

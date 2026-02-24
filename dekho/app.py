@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from flask import Flask, render_template
+from flask import Flask, jsonify, render_template
 
-from .db import get_all_tracks_file_data, init_db
+from .db import get_all_tracks_file_data, get_track_details, init_db
 from .scan import run_scan
 
 
@@ -41,5 +41,12 @@ def create_app() -> Flask:
     def scan() -> str:
         scan_result = run_scan(Path("./music"))
         return render_template("scan_result.html", **scan_result)
+
+    @app.get("/api/tracks/<track_id>")
+    def track_details(track_id: str):
+        details = get_track_details(track_id)
+        if details is None:
+            return jsonify({"error": "Track not found"}), 404
+        return jsonify(details)
 
     return app

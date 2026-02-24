@@ -100,6 +100,7 @@ body {
   border-bottom: 1px solid var(--border);
   padding: 0.65rem 0.75rem;
   background: rgba(12, 16, 24, 0.45);
+  cursor: pointer;
 }
 
 .track-item:nth-child(even) {
@@ -108,6 +109,16 @@ body {
 
 .track-item:last-child {
   border-bottom: 0;
+}
+
+.track-item:hover,
+.track-item:focus-visible {
+  outline: none;
+  background: rgba(121, 168, 255, 0.16);
+}
+
+.track-item.is-active {
+  background: rgba(121, 168, 255, 0.28);
 }
 
 .track-path {
@@ -127,6 +138,30 @@ body {
 .empty-state {
   margin: 0;
   color: var(--text-muted);
+}
+
+.track-details {
+  margin: 1rem 0 0;
+}
+
+.track-details div {
+  margin: 0 0 0.8rem;
+}
+
+.track-details dt {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.track-details dd {
+  margin: 0.2rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+#content-panel a {
+  color: var(--accent);
 }
 
 .scan-link {

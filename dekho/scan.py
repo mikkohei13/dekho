@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from .db import DB_PATH, get_all_tracks_file_data, upsert_track
-from .metadata import extract_track_id
+from .metadata import extract_file_metadata
 
 
 @dataclass(frozen=True)
@@ -80,7 +80,8 @@ def run_scan(music_dir: Path) -> dict[str, object]:
     all_music_path_keys = {normalize_compare_key(path) for path in all_mp3_files}
 
     for file_path in all_mp3_files:
-        track_id = extract_track_id(file_path)
+        file_metadata = extract_file_metadata(file_path)
+        track_id = file_metadata.get("track_id")
         if not track_id:
             missing_identifier_files.append({"filepath": str(file_path)})
             continue
@@ -132,7 +133,16 @@ def run_scan(music_dir: Path) -> dict[str, object]:
                 }
             )
 
-        upsert_track(track_id=track_id, filepath=str(canonical_file.filepath_resolved))
+        canonical_metadata = extract_file_metadata(canonical_file.filepath_resolved)
+        upsert_track(
+            track_id=track_id,
+            filepath=str(canonical_file.filepath_resolved),
+            title=canonical_metadata.get("title"),
+            artist=canonical_metadata.get("artist"),
+            duration=canonical_metadata.get("duration"),
+            url=canonical_metadata.get("url"),
+            date_created=canonical_metadata.get("date_created"),
+        )
         scanned_tracks.append(
             {
                 "track_id": track_id,
