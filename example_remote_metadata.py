@@ -66,6 +66,6 @@ track_id = "fe9019aa-debb-4c72-859d-589a38b44835"
 url = f"https://suno.com/song/{track_id}"
 
 meta = extract_track_metadata(url)
-print(meta["tags"])
-print(meta["negative_tags"])
-print(meta["prompt"][:1024])
+print(meta["tags"][:2048])
+print(meta["negative_tags"][:2048])
+print(meta["prompt"][:8192])

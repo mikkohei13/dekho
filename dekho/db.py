@@ -99,9 +99,19 @@ def get_track_details(track_id: str) -> dict[str, str | float | None] | None:
     with get_connection() as connection:
         row = connection.execute(
             """
-            SELECT track_id, title, url, filepath, duration, date_created
-            FROM tracks_file_data
-            WHERE track_id = ?
+            SELECT
+                tfd.track_id,
+                tfd.title,
+                tfd.url,
+                tfd.filepath,
+                tfd.duration,
+                tfd.date_created,
+                trd.prompt,
+                trd.tags,
+                trd.negative_tags
+            FROM tracks_file_data AS tfd
+            LEFT JOIN track_remote_data AS trd ON trd.track_id = tfd.track_id
+            WHERE tfd.track_id = ?
             """,
             (track_id,),
         ).fetchone()
@@ -116,4 +126,48 @@ def get_track_details(track_id: str) -> dict[str, str | float | None] | None:
         "filepath": row[3],
         "duration": row[4],
         "date_created": row[5],
+        "prompt": row[6],
+        "tags": row[7],
+        "negative_tags": row[8],
     }
+
+
+def get_track_remote_data(track_id: str) -> dict[str, str | None] | None:
+    init_db()
+    with get_connection() as connection:
+        row = connection.execute(
+            """
+            SELECT track_id, prompt, tags, negative_tags
+            FROM track_remote_data
+            WHERE track_id = ?
+            """,
+            (track_id,),
+        ).fetchone()
+
+    if row is None:
+        return None
+
+    return {
+        "track_id": row[0],
+        "prompt": row[1],
+        "tags": row[2],
+        "negative_tags": row[3],
+    }
+
+
+def upsert_track_remote_data(
+    track_id: str, prompt: str, tags: str, negative_tags: str
+) -> None:
+    init_db()
+    with get_connection() as connection:
+        connection.execute(
+            """
+            INSERT INTO track_remote_data (track_id, prompt, tags, negative_tags)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(track_id) DO UPDATE SET
+                prompt = excluded.prompt,
+                tags = excluded.tags,
+                negative_tags = excluded.negative_tags
+            """,
+            (track_id, prompt, tags, negative_tags),
+        )

@@ -41,6 +41,7 @@
   <script>
     const trackItems = document.querySelectorAll(".track-item");
     const contentPanel = document.getElementById("content-panel");
+    let activeTrackId = null;
 
     function escapeHtml(value) {
       return String(value ?? "").replace(/[&<>"']/g, (char) => (
@@ -55,22 +56,35 @@
       const filepath = data.filepath ?? "";
       const duration = data.duration ?? "";
       const dateCreated = data.date_created ?? "";
+      const tags = data.tags ?? "";
+      const negativeTags = data.negative_tags ?? "";
+      const prompt = data.prompt ?? "";
 
       contentPanel.innerHTML = `
-        <header class="panel-header"><h2>${escapeHtml(title || "Untitled Track")}</h2></header>
-        <dl class="track-details">
-          <div><dt>track_id</dt><dd>${escapeHtml(trackId)}</dd></div>
-          <div><dt>url</dt><dd>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>` : "-"}</dd></div>
-          <div><dt>filepath</dt><dd>${escapeHtml(filepath)}</dd></div>
-          <div><dt>duration</dt><dd>${escapeHtml(duration)}</dd></div>
-          <div><dt>date_created</dt><dd>${escapeHtml(dateCreated)}</dd></div>
-        </dl>
+        <section id="track-info" aria-label="Track information">
+          <header class="panel-header"><h2>${escapeHtml(title || "Untitled Track")}</h2></header>
+          <div class="remote-actions">
+            <button id="get-remote-data-btn" type="button">Get data from Suno</button>
+            <span id="remote-data-error" class="remote-data-error" aria-live="polite"></span>
+          </div>
+          <dl class="track-details">
+            <div><dt>track_id</dt><dd>${escapeHtml(trackId)}</dd></div>
+            <div><dt>url</dt><dd>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>` : "-"}</dd></div>
+            <div><dt>filepath</dt><dd>${escapeHtml(filepath)}</dd></div>
+            <div><dt>duration</dt><dd>${escapeHtml(duration)}</dd></div>
+            <div><dt>date_created</dt><dd>${escapeHtml(dateCreated)}</dd></div>
+            <div><dt>tags</dt><dd>${escapeHtml(tags || "-")}</dd></div>
+            <div><dt>negative_tags</dt><dd>${escapeHtml(negativeTags || "-")}</dd></div>
+            <div><dt>prompt</dt><dd>${escapeHtml(prompt || "-")}</dd></div>
+          </dl>
+        </section>
       `;
     }
 
     async function loadTrackDetails(trackId, item) {
       trackItems.forEach((trackItem) => trackItem.classList.remove("is-active"));
       item.classList.add("is-active");
+      activeTrackId = trackId;
       contentPanel.innerHTML = '<p class="empty-state">Loading track details...</p>';
 
       try {
@@ -82,6 +96,37 @@
         renderDetails(data);
       } catch (error) {
         contentPanel.innerHTML = `<p class="empty-state">${escapeHtml(error.message || "Unable to load track details.")}</p>`;
+      }
+    }
+
+    async function fetchRemoteData(trackId) {
+      const button = document.getElementById("get-remote-data-btn");
+      const error = document.getElementById("remote-data-error");
+      if (!button || !error) {
+        return;
+      }
+
+      error.textContent = "";
+      button.disabled = true;
+      button.textContent = "Fetching...";
+
+      try {
+        const response = await fetch(`/api/tracks/${encodeURIComponent(trackId)}/remote-data`, {
+          method: "POST",
+        });
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || "Failed to fetch data from Suno.");
+        }
+        renderDetails(payload);
+      } catch (fetchError) {
+        error.textContent = fetchError.message || "Failed to fetch data from Suno.";
+      } finally {
+        const nextButton = document.getElementById("get-remote-data-btn");
+        if (nextButton) {
+          nextButton.disabled = false;
+          nextButton.textContent = "Get data from Suno";
+        }
       }
     }
 
@@ -98,6 +143,16 @@
           loadTrackDetails(trackId, item);
         }
       });
+    });
+
+    contentPanel.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      if (target.id === "get-remote-data-btn" && activeTrackId) {
+        fetchRemoteData(activeTrackId);
+      }
     });
   </script>
 </body>

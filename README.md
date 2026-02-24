@@ -27,7 +27,11 @@ The app is available at http://127.0.0.1:5001
 
 ## Database
 
-The SQLite database contains primary data.
+Use this command to get more information about the database:
+
+```bash
+uv run dev_db_summary.py
+```
 
 Table `tracks_file_data` has the following columns:
 - track_id: string, primary key
