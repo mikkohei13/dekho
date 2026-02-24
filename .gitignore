@@ -1,5 +1,7 @@
 
 **/music/**
+**/music_duplicates/**
+**/database_backups/**
 *.sqlite3
 
 # macOS

@@ -23,20 +23,24 @@ The app is available at http://127.0.0.1:5001
 
 The SQLite database contains primary data.
 
-Table `tracks` has the following columns:
+Table `tracks_file_data` has the following columns:
 - track_id: string, primary key
 - filepath: string
 - title: string
 - artist: string
 - duration: float
 - url: string
-- created: datetime
+- date_created: datetime
+- date_added: datetime
+
+Table `track_remote_data` has the following columns:
+- track_id: string, foreign key to `tracks_file_data.track_id`
 - prompt: string
 - tags: string
 - negative_tags: string
 
-Table `track_userata` has the following columns:
-- track_id: string, foreign key to `tracks.track_id`
+Table `track_user_data` has the following columns:
+- track_id: string, foreign key to `tracks_file_data.track_id`
 - notes: string
 - title_new: string
 

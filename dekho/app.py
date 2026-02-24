@@ -2,8 +2,8 @@ from pathlib import Path
 
 from flask import Flask, render_template
 
-from .db import init_db, upsert_track
-from .metadata import extract_track_id
+from .db import init_db
+from .scan import run_scan
 
 
 def create_app() -> Flask:
@@ -16,30 +16,7 @@ def create_app() -> Flask:
 
     @app.get("/scan")
     def scan() -> str:
-        music_dir = Path("./music")
-        scanned = 0
-        stored = 0
-        skipped = 0
-        tracks = []
-
-        if music_dir.exists():
-            for file_path in sorted(music_dir.rglob("*.mp3")):
-                scanned += 1
-                track_id = extract_track_id(file_path)
-                if not track_id:
-                    skipped += 1
-                    continue
-
-                upsert_track(track_id=track_id, filepath=str(file_path.resolve()))
-                stored += 1
-                tracks.append({"track_id": track_id, "filepath": str(file_path)})
-
-        return render_template(
-            "scan_result.html",
-            scanned=scanned,
-            stored=stored,
-            skipped=skipped,
-            tracks=tracks,
-        )
+        scan_result = run_scan(Path("./music"))
+        return render_template("scan_result.html", **scan_result)
 
     return app

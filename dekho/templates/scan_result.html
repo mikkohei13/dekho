@@ -10,13 +10,56 @@
   <p>Scanned files: {{ scanned }}</p>
   <p>Stored tracks: {{ stored }}</p>
   <p>Skipped files: {{ skipped }}</p>
+  <p>Duplicate files moved: {{ warnings_duplicates|length }}</p>
+  <p>Renamed paths updated: {{ warnings_renamed_path|length }}</p>
+  <p>Missing files from folder: {{ warnings_missing_from_folder|length }}</p>
+  <p>Missing identifiers: {{ warnings_missing_identifier|length }}</p>
 
-  <h2>Tracks</h2>
+  <h2>Successfully Scanned Tracks</h2>
   <ul>
     {% for track in tracks %}
       <li>{{ track.track_id }} - {{ track.filepath }}</li>
     {% else %}
       <li>No tracks found.</li>
+    {% endfor %}
+  </ul>
+
+  <h2>A) Duplicate Identifier Files</h2>
+  <ul>
+    {% for warning in warnings_duplicates %}
+      <li>
+        {{ warning.track_id }} - kept: {{ warning.kept_filepath }},
+        moved duplicate: {{ warning.duplicate_filepath }} -> {{ warning.moved_to }}
+      </li>
+    {% else %}
+      <li>No duplicate identifier files.</li>
+    {% endfor %}
+  </ul>
+
+  <h2>B) Renamed Files (Path Updated)</h2>
+  <ul>
+    {% for warning in warnings_renamed_path %}
+      <li>{{ warning.track_id }} - {{ warning.old_filepath }} -> {{ warning.new_filepath }}</li>
+    {% else %}
+      <li>No renamed files requiring path updates.</li>
+    {% endfor %}
+  </ul>
+
+  <h2>C) Database Tracks Missing From Folder</h2>
+  <ul>
+    {% for warning in warnings_missing_from_folder %}
+      <li>{{ warning.track_id }} - expected path: {{ warning.filepath }}</li>
+    {% else %}
+      <li>No database tracks missing from folder.</li>
+    {% endfor %}
+  </ul>
+
+  <h2>D) Files Missing Identifier Metadata</h2>
+  <ul>
+    {% for warning in warnings_missing_identifier %}
+      <li>{{ warning.filepath }}</li>
+    {% else %}
+      <li>No files missing identifier metadata.</li>
     {% endfor %}
   </ul>
 
