@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import os
+import shutil
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-from .db import get_all_tracks_file_data, upsert_track
+from .db import DB_PATH, get_all_tracks_file_data, upsert_track
 from .metadata import extract_track_id
 
 
@@ -48,7 +49,22 @@ def _pick_canonical_file(
     return track_files[0]
 
 
+def backup_database_if_exists() -> str | None:
+    source_db = DB_PATH
+    if not source_db.exists():
+        return None
+
+    backups_dir = Path("./database_backups")
+    backups_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    destination = backups_dir / f"{source_db.stem}_{timestamp}{source_db.suffix}"
+
+    shutil.copy2(source_db, destination)
+    return str(destination)
+
+
 def run_scan(music_dir: Path) -> dict[str, object]:
+    database_backup_path = backup_database_if_exists()
     duplicates_dir = Path("./music_duplicates")
     all_mp3_files: list[Path] = []
     if music_dir.exists():
@@ -149,6 +165,7 @@ def run_scan(music_dir: Path) -> dict[str, object]:
         )
 
     return {
+        "database_backup_path": database_backup_path,
         "scanned": len(all_mp3_files),
         "stored": len(scanned_tracks),
         "skipped": len(missing_identifier_files),
