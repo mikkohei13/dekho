@@ -4,9 +4,37 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Dekho</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles/index.css') }}">
 </head>
 <body>
-  <h1>Dekho</h1>
-  <p><a href="/scan">Scan music folder</a></p>
+  <nav id="top-nav" aria-label="Primary">
+    <div class="brand">Dekho</div>
+    <a class="scan-link" href="/scan">Scan music folder</a>
+  </nav>
+
+  <main id="app-shell">
+    <aside id="tracks-panel" aria-labelledby="tracks-heading">
+      <header class="panel-header">
+        <h1 id="tracks-heading">Music Tracks</h1>
+      </header>
+
+      <section id="tracks-list" aria-label="Track list">
+        {% if tracks %}
+          <ul class="track-items">
+            {% for track in tracks %}
+              <li class="track-item">
+                <h2 class="track-path">{{ track.filepath }}</h2>
+                <p class="track-id">{{ track.track_id }}</p>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="empty-state">No tracks in the database under <code>./music</code> yet.</p>
+        {% endif %}
+      </section>
+    </aside>
+
+    <section id="content-panel" aria-label="Details panel"></section>
+  </main>
 </body>
 </html>

@@ -2,6 +2,12 @@
 
 Music Track Database based on Flask, uv, and SQLite. Aims to help me to keep track of my music tracks generated in Suno. Most business logic will be in Flask, and frontend has only minimal vanilla JavaScript.
 
+Features:
+- Shows a list of tracks with their metadata
+- Scans music folder and updates the database (table tracks_file_data)
+- Allows user to fetch remote data (table track_remote_data)
+- Allows user to edit track metadata (table track_user_data)
+
 ## Setup
 
 To run the app, use:
@@ -53,4 +59,5 @@ Table `track_user_data` has the following columns:
 - Keep it simple
 - This is one-person app, so avoid premature optimization
 - No authentication
-
+- Desktop-optimized UI, no mobile support
+- No JavaScript frameworks

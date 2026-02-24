@@ -1,0 +1,156 @@
+:root {
+  color-scheme: dark;
+  --bg: #0f1116;
+  --surface: #171b24;
+  --surface-alt: #1d2330;
+  --text: #d9e1f2;
+  --text-muted: #97a3bd;
+  --accent: #79a8ff;
+  --accent-soft: rgba(121, 168, 255, 0.22);
+  --border: rgba(151, 163, 189, 0.2);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  font-family: Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 1rem;
+  line-height: 1.45;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(121, 168, 255, 0.12), transparent 38%),
+    radial-gradient(circle at 92% 92%, rgba(91, 236, 184, 0.08), transparent 30%),
+    var(--bg);
+}
+
+#top-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.8rem 1.1rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(15, 17, 22, 0.86);
+  backdrop-filter: blur(8px);
+}
+
+.brand {
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+#app-shell {
+  display: grid;
+  grid-template-columns: 40% 60%;
+  gap: 1.1rem;
+  flex: 1;
+  min-height: 0;
+  padding: 1.1rem;
+}
+
+#tracks-panel,
+#content-panel {
+  background: linear-gradient(180deg, var(--surface), var(--surface-alt));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1rem;
+  min-height: 0;
+  overflow: hidden;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+}
+
+#tracks-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.panel-header h1,
+.panel-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  letter-spacing: 0.01em;
+}
+
+#tracks-list {
+  margin-top: 1rem;
+  margin-left: -1rem;
+  margin-right: -1rem;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--border);
+}
+
+.track-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.track-item {
+  border-bottom: 1px solid var(--border);
+  padding: 0.65rem 0.75rem;
+  background: rgba(12, 16, 24, 0.45);
+}
+
+.track-item:nth-child(even) {
+  background: rgba(27, 34, 48, 0.52);
+}
+
+.track-item:last-child {
+  border-bottom: 0;
+}
+
+.track-path {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.track-id {
+  margin: 0.35rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
+}
+
+.empty-state {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.scan-link {
+  display: inline-block;
+  text-decoration: none;
+  color: var(--text);
+  border: 1px solid var(--accent-soft);
+  border-radius: 999px;
+  padding: 0.55rem 0.95rem;
+  background: linear-gradient(90deg, rgba(121, 168, 255, 0.24), rgba(91, 236, 184, 0.2));
+}
+
+.scan-link:hover,
+.scan-link:focus-visible {
+  outline: none;
+  filter: brightness(1.07);
+}
+
+code {
+  color: #b7d3ff;
+}
+
+@media (max-width: 900px) {
+  #app-shell {
+    grid-template-columns: 1fr;
+  }
+}
