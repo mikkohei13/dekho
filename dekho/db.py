@@ -86,12 +86,21 @@ def get_all_tracks_file_data() -> list[dict[str, str | None]]:
     with get_connection() as connection:
         rows = connection.execute(
             """
-            SELECT track_id, filepath
-            FROM tracks_file_data
+            SELECT tfd.track_id, tfd.filepath, tfd.title, tud.title_new
+            FROM tracks_file_data AS tfd
+            LEFT JOIN track_user_data AS tud ON tud.track_id = tfd.track_id
             """
         ).fetchall()
 
-    return [{"track_id": row[0], "filepath": row[1]} for row in rows]
+    return [
+        {
+            "track_id": row[0],
+            "filepath": row[1],
+            "title": row[2],
+            "title_new": row[3],
+        }
+        for row in rows
+    ]
 
 
 def get_track_details(track_id: str) -> dict[str, str | float | None] | None:
@@ -108,9 +117,12 @@ def get_track_details(track_id: str) -> dict[str, str | float | None] | None:
                 tfd.date_created,
                 trd.prompt,
                 trd.tags,
-                trd.negative_tags
+                trd.negative_tags,
+                tud.title_new,
+                tud.notes
             FROM tracks_file_data AS tfd
             LEFT JOIN track_remote_data AS trd ON trd.track_id = tfd.track_id
+            LEFT JOIN track_user_data AS tud ON tud.track_id = tfd.track_id
             WHERE tfd.track_id = ?
             """,
             (track_id,),
@@ -129,6 +141,8 @@ def get_track_details(track_id: str) -> dict[str, str | float | None] | None:
         "prompt": row[6],
         "tags": row[7],
         "negative_tags": row[8],
+        "title_new": row[9],
+        "notes": row[10],
     }
 
 
@@ -170,4 +184,19 @@ def upsert_track_remote_data(
                 negative_tags = excluded.negative_tags
             """,
             (track_id, prompt, tags, negative_tags),
+        )
+
+
+def upsert_track_user_data(track_id: str, title_new: str, notes: str) -> None:
+    init_db()
+    with get_connection() as connection:
+        connection.execute(
+            """
+            INSERT INTO track_user_data (track_id, title_new, notes)
+            VALUES (?, ?, ?)
+            ON CONFLICT(track_id) DO UPDATE SET
+                title_new = excluded.title_new,
+                notes = excluded.notes
+            """,
+            (track_id, title_new, notes),
         )

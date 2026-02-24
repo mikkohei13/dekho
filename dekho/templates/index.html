@@ -23,7 +23,7 @@
           <ul class="track-items">
             {% for track in tracks %}
               <li class="track-item" data-track-id="{{ track.track_id }}" tabindex="0">
-                <h2 class="track-path">{{ track.filepath }}</h2>
+                <h2 class="track-path">{{ track.display_title }}</h2>
                 <p class="track-id">{{ track.track_id }}</p>
               </li>
             {% endfor %}
@@ -49,8 +49,27 @@
       ));
     }
 
+    function getDisplayTitle(data) {
+      return data.title_new || data.title || "Unknown";
+    }
+
+    function updateTrackListTitle(trackId, data) {
+      const trackItem = document.querySelector(`.track-item[data-track-id="${CSS.escape(trackId)}"]`);
+      if (!trackItem) {
+        return;
+      }
+      const titleElement = trackItem.querySelector(".track-path");
+      if (!titleElement) {
+        return;
+      }
+      titleElement.textContent = getDisplayTitle(data);
+    }
+
     function renderDetails(data) {
       const title = data.title ?? "";
+      const titleNew = data.title_new ?? "";
+      const notes = data.notes ?? "";
+      const displayTitle = titleNew || title || "Untitled Track";
       const trackId = data.track_id ?? "";
       const url = data.url ?? "";
       const filepath = data.filepath ?? "";
@@ -62,12 +81,13 @@
 
       contentPanel.innerHTML = `
         <section id="track-info" aria-label="Track information">
-          <header class="panel-header"><h2>${escapeHtml(title || "Untitled Track")}</h2></header>
+          <header class="panel-header"><h2>${escapeHtml(displayTitle)}</h2></header>
           <div class="remote-actions">
             <button id="get-remote-data-btn" type="button">Get data from Suno</button>
             <span id="remote-data-error" class="remote-data-error" aria-live="polite"></span>
           </div>
           <dl class="track-details">
+            <div><dt>title</dt><dd>${escapeHtml(title || "-")}</dd></div>
             <div><dt>track_id</dt><dd>${escapeHtml(trackId)}</dd></div>
             <div><dt>url</dt><dd>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>` : "-"}</dd></div>
             <div><dt>filepath</dt><dd>${escapeHtml(filepath)}</dd></div>
@@ -75,6 +95,21 @@
             <div><dt>date_created</dt><dd>${escapeHtml(dateCreated)}</dd></div>
             <div><dt>tags</dt><dd>${escapeHtml(tags || "-")}</dd></div>
             <div><dt>negative_tags</dt><dd>${escapeHtml(negativeTags || "-")}</dd></div>
+            <div>
+              <dt>track_user_data</dt>
+              <dd>
+                <form id="track-user-data-form">
+                  <label for="title-new-input">title_new</label>
+                  <input id="title-new-input" name="title_new" type="text" value="${escapeHtml(titleNew)}">
+                  <label for="notes-input">notes</label>
+                  <textarea id="notes-input" name="notes" rows="4">${escapeHtml(notes)}</textarea>
+                  <div class="track-user-data-actions">
+                    <button id="save-track-user-data-btn" type="button">Save</button>
+                    <span id="track-user-data-error" class="track-user-data-error" aria-live="polite"></span>
+                  </div>
+                </form>
+              </dd>
+            </div>
             <div><dt>prompt</dt><dd>${escapeHtml(prompt || "-")}</dd></div>
           </dl>
         </section>
@@ -93,6 +128,7 @@
           throw new Error("Unable to load track details.");
         }
         const data = await response.json();
+        updateTrackListTitle(trackId, data);
         renderDetails(data);
       } catch (error) {
         contentPanel.innerHTML = `<p class="empty-state">${escapeHtml(error.message || "Unable to load track details.")}</p>`;
@@ -130,6 +166,52 @@
       }
     }
 
+    async function saveUserData(trackId) {
+      const button = document.getElementById("save-track-user-data-btn");
+      const error = document.getElementById("track-user-data-error");
+      const titleInput = document.getElementById("title-new-input");
+      const notesInput = document.getElementById("notes-input");
+      if (
+        !button ||
+        !error ||
+        !(titleInput instanceof HTMLInputElement) ||
+        !(notesInput instanceof HTMLTextAreaElement)
+      ) {
+        return;
+      }
+
+      error.textContent = "";
+      button.disabled = true;
+      button.textContent = "Saving...";
+
+      try {
+        const response = await fetch(`/api/tracks/${encodeURIComponent(trackId)}/user-data`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            title_new: titleInput.value,
+            notes: notesInput.value,
+          }),
+        });
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error || "Failed to save track data.");
+        }
+        updateTrackListTitle(trackId, payload);
+        renderDetails(payload);
+      } catch (saveError) {
+        error.textContent = saveError.message || "Failed to save track data.";
+      } finally {
+        const nextButton = document.getElementById("save-track-user-data-btn");
+        if (nextButton) {
+          nextButton.disabled = false;
+          nextButton.textContent = "Save";
+        }
+      }
+    }
+
     trackItems.forEach((item) => {
       const trackId = item.dataset.trackId;
       if (!trackId) {
@@ -152,6 +234,9 @@
       }
       if (target.id === "get-remote-data-btn" && activeTrackId) {
         fetchRemoteData(activeTrackId);
+      }
+      if (target.id === "save-track-user-data-btn" && activeTrackId) {
+        saveUserData(activeTrackId);
       }
     });
   </script>

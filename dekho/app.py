@@ -1,12 +1,13 @@
 from pathlib import Path
 
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 
 from .db import (
     get_all_tracks_file_data,
     get_track_details,
     init_db,
     upsert_track_remote_data,
+    upsert_track_user_data,
 )
 from .remote_metadata import fetch_suno_track_metadata
 from .scan import run_scan
@@ -24,6 +25,8 @@ def create_app() -> Flask:
         for row in get_all_tracks_file_data():
             track_id = str(row["track_id"]) if row["track_id"] else ""
             filepath = str(row["filepath"]) if row["filepath"] else ""
+            title = str(row["title"]) if row["title"] else ""
+            title_new = str(row["title_new"]) if row["title_new"] else ""
             if not track_id or not filepath:
                 continue
 
@@ -37,6 +40,7 @@ def create_app() -> Flask:
                 {
                     "track_id": track_id,
                     "filepath": relative_path.as_posix(),
+                    "display_title": title_new or title or "Unknown",
                 }
             )
 
@@ -77,6 +81,33 @@ def create_app() -> Flask:
             prompt=remote_data["prompt"],
             tags=remote_data["tags"],
             negative_tags=remote_data["negative_tags"],
+        )
+
+        updated_details = get_track_details(track_id)
+        if updated_details is None:
+            return jsonify({"error": "Track not found"}), 404
+        return jsonify(updated_details)
+
+    @app.post("/api/tracks/<track_id>/user-data")
+    def save_track_user_data(track_id: str):
+        details = get_track_details(track_id)
+        if details is None:
+            return jsonify({"error": "Track not found"}), 404
+
+        payload = request.get_json(silent=True)
+        if payload is None:
+            payload = {}
+
+        title_new = payload.get("title_new", "")
+        notes = payload.get("notes", "")
+
+        if not isinstance(title_new, str) or not isinstance(notes, str):
+            return jsonify({"error": "title_new and notes must be strings."}), 400
+
+        upsert_track_user_data(
+            track_id=track_id,
+            title_new=title_new,
+            notes=notes,
         )
 
         updated_details = get_track_details(track_id)
