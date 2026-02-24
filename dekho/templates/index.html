@@ -23,7 +23,12 @@
           <ul class="track-items">
             {% for track in tracks %}
               <li class="track-item" data-track-id="{{ track.track_id }}" tabindex="0">
-                <h2 class="track-path">{{ track.display_title }}</h2>
+                <h2 class="track-title">
+                  {{ track.display_title }}
+                  {% if track.has_remote_tags %}
+                    <span class="remote-tags-indicator" aria-label="Remote metadata available" title="Remote metadata fetched from Suno">✦</span>
+                  {% endif %}
+                </h2>
                 <p class="track-id">{{ track.track_id }}</p>
               </li>
             {% endfor %}
@@ -53,16 +58,25 @@
       return data.title_new || data.title || "Unknown";
     }
 
+    function hasRemoteTags(tags) {
+      return tags !== null && tags !== undefined && String(tags).trim() !== "";
+    }
+
+    function remoteTagsIndicatorHtml() {
+      return '<span class="remote-tags-indicator" aria-label="Remote metadata available" title="Remote metadata fetched from Suno">✦</span>';
+    }
+
     function updateTrackListTitle(trackId, data) {
       const trackItem = document.querySelector(`.track-item[data-track-id="${CSS.escape(trackId)}"]`);
       if (!trackItem) {
         return;
       }
-      const titleElement = trackItem.querySelector(".track-path");
+      const titleElement = trackItem.querySelector(".track-title");
       if (!titleElement) {
         return;
       }
-      titleElement.textContent = getDisplayTitle(data);
+      const displayTitle = getDisplayTitle(data);
+      titleElement.innerHTML = `${escapeHtml(displayTitle)}${hasRemoteTags(data.tags) ? remoteTagsIndicatorHtml() : ""}`;
     }
 
     function renderDetails(data) {
@@ -81,37 +95,41 @@
 
       contentPanel.innerHTML = `
         <section id="track-info" aria-label="Track information">
-          <header class="panel-header"><h2>${escapeHtml(displayTitle)}</h2></header>
-          <div class="remote-actions">
-            <button id="get-remote-data-btn" type="button">Get data from Suno</button>
-            <span id="remote-data-error" class="remote-data-error" aria-live="polite"></span>
+          <header class="panel-header">
+            <h2>${escapeHtml(displayTitle)}${hasRemoteTags(tags) ? remoteTagsIndicatorHtml() : ""}</h2>
+          </header>
+          <div class="track-form">
+            <form id="track-user-data-form">
+              <label for="title-new-input">title_new</label>
+              <input id="title-new-input" name="title_new" type="text" value="${escapeHtml(titleNew)}">
+              <label for="notes-input">notes</label>
+              <textarea id="notes-input" name="notes" rows="4">${escapeHtml(notes)}</textarea>
+              <div class="track-user-data-actions">
+                <button id="save-track-user-data-btn" type="button">Save</button>
+                <span id="track-user-data-error" class="track-user-data-error" aria-live="polite"></span>
+              </div>
+            </form>
           </div>
-          <dl class="track-details">
-            <div><dt>title</dt><dd>${escapeHtml(title || "-")}</dd></div>
-            <div><dt>track_id</dt><dd>${escapeHtml(trackId)}</dd></div>
-            <div><dt>url</dt><dd>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>` : "-"}</dd></div>
-            <div><dt>filepath</dt><dd>${escapeHtml(filepath)}</dd></div>
-            <div><dt>duration</dt><dd>${escapeHtml(duration)}</dd></div>
-            <div><dt>date_created</dt><dd>${escapeHtml(dateCreated)}</dd></div>
-            <div><dt>tags</dt><dd>${escapeHtml(tags || "-")}</dd></div>
-            <div><dt>negative_tags</dt><dd>${escapeHtml(negativeTags || "-")}</dd></div>
-            <div>
-              <dt>track_user_data</dt>
-              <dd>
-                <form id="track-user-data-form">
-                  <label for="title-new-input">title_new</label>
-                  <input id="title-new-input" name="title_new" type="text" value="${escapeHtml(titleNew)}">
-                  <label for="notes-input">notes</label>
-                  <textarea id="notes-input" name="notes" rows="4">${escapeHtml(notes)}</textarea>
-                  <div class="track-user-data-actions">
-                    <button id="save-track-user-data-btn" type="button">Save</button>
-                    <span id="track-user-data-error" class="track-user-data-error" aria-live="polite"></span>
-                  </div>
-                </form>
-              </dd>
+          <div class="track-details">
+            <p id="track-info-title">${escapeHtml(title || "-")}</p>
+            <p id="track-info-id">${escapeHtml(trackId)}</p>
+            <p id="track-info-url">${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>` : "-"}<p>
+            <p id="track-info-filepath">${escapeHtml(filepath)}</p>
+            <p id="track-info-duration">${escapeHtml(duration)}</p>
+            <p id="track-info-date-created">${escapeHtml(dateCreated)}</p>
+          </div>
+          <div class="track-moredetails">
+            <div class="remote-actions">
+              <button id="get-remote-data-btn" type="button">Get data from Suno</button>
+              <span id="remote-data-error" class="remote-data-error" aria-live="polite"></span>
             </div>
-            <div><dt>prompt</dt><dd>${escapeHtml(prompt || "-")}</dd></div>
-          </dl>
+            <h4>Tags</h4>
+            <div id="track-info-tags">${escapeHtml(tags || "-")}</div>
+            <h4>Negative Tags</h4>
+            <div id="track-info-negative-tags">${escapeHtml(negativeTags || "-")}</div>
+            <h4>Lyrics Prompt</h4>
+            <div id="track-info-prompt">${escapeHtml(prompt || "-")}</div>
+          </div>
         </section>
       `;
     }
@@ -154,6 +172,7 @@
         if (!response.ok) {
           throw new Error(payload.error || "Failed to fetch data from Suno.");
         }
+        updateTrackListTitle(trackId, payload);
         renderDetails(payload);
       } catch (fetchError) {
         error.textContent = fetchError.message || "Failed to fetch data from Suno.";

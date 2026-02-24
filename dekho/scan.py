@@ -19,9 +19,16 @@ class TrackFile:
     filepath_compare_key: str
 
 
-def normalize_compare_key(path: Path | str) -> str:
-    normalized = os.path.normpath(str(Path(path).resolve()))
+def normalize_compare_key(path: Path | str, base_dir: Path | None = None) -> str:
+    candidate_path = Path(path)
+    if not candidate_path.is_absolute() and base_dir is not None:
+        candidate_path = base_dir / candidate_path
+    normalized = os.path.normpath(str(candidate_path.resolve()))
     return os.path.normcase(normalized).casefold()
+
+
+def to_storage_filepath(path: Path, music_root: Path) -> str:
+    return path.resolve().relative_to(music_root).as_posix()
 
 
 def move_to_duplicates_folder(source_path: Path, duplicates_dir: Path) -> Path:
@@ -39,10 +46,10 @@ def move_to_duplicates_folder(source_path: Path, duplicates_dir: Path) -> Path:
 
 
 def _pick_canonical_file(
-    track_files: list[TrackFile], db_filepath: str | None
+    track_files: list[TrackFile], db_filepath: str | None, music_root: Path
 ) -> TrackFile:
     if db_filepath:
-        db_compare_key = normalize_compare_key(db_filepath)
+        db_compare_key = normalize_compare_key(db_filepath, base_dir=music_root)
         for candidate in track_files:
             if candidate.filepath_compare_key == db_compare_key:
                 return candidate
@@ -65,6 +72,7 @@ def backup_database_if_exists() -> str | None:
 
 def run_scan(music_dir: Path) -> dict[str, object]:
     database_backup_path = backup_database_if_exists()
+    music_root = music_dir.resolve()
     duplicates_dir = Path("./music_duplicates")
     all_mp3_files: list[Path] = []
     if music_dir.exists():
@@ -83,7 +91,9 @@ def run_scan(music_dir: Path) -> dict[str, object]:
         file_metadata = extract_file_metadata(file_path)
         track_id = file_metadata.get("track_id")
         if not track_id:
-            missing_identifier_files.append({"filepath": str(file_path)})
+            missing_identifier_files.append(
+                {"filepath": to_storage_filepath(file_path, music_root)}
+            )
             continue
 
         resolved = file_path.resolve()
@@ -108,7 +118,7 @@ def run_scan(music_dir: Path) -> dict[str, object]:
     for track_id in sorted(grouped_track_files):
         candidates = grouped_track_files[track_id]
         db_filepath = db_by_id.get(track_id, {}).get("filepath")
-        canonical_file = _pick_canonical_file(candidates, db_filepath)
+        canonical_file = _pick_canonical_file(candidates, db_filepath, music_root)
         scanned_track_ids.add(track_id)
 
         for candidate in candidates:
@@ -124,19 +134,25 @@ def run_scan(music_dir: Path) -> dict[str, object]:
                 }
             )
 
-        if db_filepath and normalize_compare_key(db_filepath) != canonical_file.filepath_compare_key:
+        if (
+            db_filepath
+            and normalize_compare_key(db_filepath, base_dir=music_root)
+            != canonical_file.filepath_compare_key
+        ):
             renamed_path_updates.append(
                 {
                     "track_id": track_id,
                     "old_filepath": str(db_filepath),
-                    "new_filepath": str(canonical_file.filepath_resolved),
+                    "new_filepath": to_storage_filepath(
+                        canonical_file.filepath_resolved, music_root
+                    ),
                 }
             )
 
         canonical_metadata = extract_file_metadata(canonical_file.filepath_resolved)
         upsert_track(
             track_id=track_id,
-            filepath=str(canonical_file.filepath_resolved),
+            filepath=to_storage_filepath(canonical_file.filepath_resolved, music_root),
             title=canonical_metadata.get("title"),
             artist=canonical_metadata.get("artist"),
             duration=canonical_metadata.get("duration"),
@@ -146,7 +162,7 @@ def run_scan(music_dir: Path) -> dict[str, object]:
         scanned_tracks.append(
             {
                 "track_id": track_id,
-                "filepath": str(canonical_file.filepath),
+                "filepath": to_storage_filepath(canonical_file.filepath, music_root),
                 "scan_time_utc": datetime.now(UTC).isoformat(),
             }
         )
@@ -158,7 +174,11 @@ def run_scan(music_dir: Path) -> dict[str, object]:
         if not row_track_id:
             continue
 
-        row_path_key = normalize_compare_key(row_filepath) if row_filepath else None
+        row_path_key = (
+            normalize_compare_key(row_filepath, base_dir=music_root)
+            if row_filepath
+            else None
+        )
         has_id_in_scan = row_track_id in scanned_track_ids
         has_path_in_scan = bool(row_path_key and row_path_key in all_music_path_keys)
 

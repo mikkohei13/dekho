@@ -27,10 +27,14 @@ def create_app() -> Flask:
             filepath = str(row["filepath"]) if row["filepath"] else ""
             title = str(row["title"]) if row["title"] else ""
             title_new = str(row["title_new"]) if row["title_new"] else ""
+            tags = str(row["tags"]) if row["tags"] else ""
             if not track_id or not filepath:
                 continue
 
-            resolved_path = Path(filepath).resolve()
+            path_in_db = Path(filepath)
+            if path_in_db.is_absolute():
+                continue
+            resolved_path = (music_root / path_in_db).resolve()
             try:
                 relative_path = resolved_path.relative_to(music_root)
             except ValueError:
@@ -41,6 +45,7 @@ def create_app() -> Flask:
                     "track_id": track_id,
                     "filepath": relative_path.as_posix(),
                     "display_title": title_new or title or "Unknown",
+                    "has_remote_tags": bool(tags.strip()),
                 }
             )
 
