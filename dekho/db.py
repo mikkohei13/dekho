@@ -170,7 +170,10 @@ def get_track_remote_data(track_id: str) -> dict[str, str | None] | None:
 
 
 def upsert_track_remote_data(
-    track_id: str, prompt: str, tags: str, negative_tags: str
+    track_id: str,
+    prompt: str | None,
+    tags: str | None,
+    negative_tags: str | None,
 ) -> None:
     init_db()
     with get_connection() as connection:

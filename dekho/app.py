@@ -78,9 +78,9 @@ def create_app() -> Flask:
 
         upsert_track_remote_data(
             track_id=track_id,
-            prompt=remote_data["prompt"],
-            tags=remote_data["tags"],
-            negative_tags=remote_data["negative_tags"],
+            prompt=remote_data.get("prompt"),
+            tags=remote_data.get("tags"),
+            negative_tags=remote_data.get("negative_tags"),
         )
 
         updated_details = get_track_details(track_id)

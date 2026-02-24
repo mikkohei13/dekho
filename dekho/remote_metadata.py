@@ -25,37 +25,103 @@ def _read_html(url: str) -> str:
         return response.read().decode("utf-8", errors="replace")
 
 
-def fetch_suno_track_metadata(track_url: str) -> dict[str, str]:
+TEXT_REF_RE = re.compile(r"^(\d+):T\d+,$")
+
+
+def _extract_from_decoded_chunk(
+    decoded: str, pending_text_ref_id: str | None
+) -> tuple[dict[str, Any] | None, dict[str, str], str | None]:
+    best_candidate: dict[str, Any] | None = None
+    text_refs: dict[str, str] = {}
+    next_pending = pending_text_ref_id
+
+    # Next.js Flight can emit text references in two steps:
+    #   25:T690,        (declares text ref id)
+    #   <next chunk>    (actual text body)
+    if next_pending and ":" not in decoded:
+        text_refs[next_pending] = decoded
+        next_pending = None
+
+    for line in decoded.splitlines():
+        marker_match = TEXT_REF_RE.match(line.strip())
+        if marker_match:
+            next_pending = marker_match.group(1)
+            continue
+
+        if ":" not in line:
+            continue
+        _, payload = line.split(":", 1)
+        payload = payload.strip()
+        if not payload or payload[0] not in "[{":
+            continue
+
+        try:
+            obj = json.loads(payload)
+        except json.JSONDecodeError:
+            continue
+
+        for node in _walk(obj):
+            if not isinstance(node, dict):
+                continue
+            present_keys = {"prompt", "tags", "negative_tags"}.intersection(node.keys())
+            if not present_keys:
+                continue
+
+            if best_candidate is None or len(present_keys) > len(
+                {"prompt", "tags", "negative_tags"}.intersection(best_candidate.keys())
+            ):
+                best_candidate = node
+
+    return best_candidate, text_refs, next_pending
+
+
+def _resolve_prompt_reference(prompt: str | None, text_refs: dict[str, str]) -> str | None:
+    if not isinstance(prompt, str):
+        return prompt
+    if prompt.startswith("$") and prompt[1:].isdigit():
+        return text_refs.get(prompt[1:], prompt)
+    return prompt
+
+
+def fetch_suno_track_metadata(track_url: str) -> dict[str, str | None]:
     if not track_url.startswith(("http://", "https://")):
         raise ValueError("Track URL is missing or invalid.")
     if "/song/" not in track_url:
         raise ValueError("Track URL is not a Suno track URL.")
 
     html = _read_html(track_url)
+    text_refs: dict[str, str] = {}
+    pending_text_ref_id: str | None = None
+    best_candidate: dict[str, Any] | None = None
 
     for match in PUSH_RE.finditer(html):
         escaped = match.group(1)
         decoded = json.loads(f'"{escaped}"')
+        candidate, refs, pending_text_ref_id = _extract_from_decoded_chunk(
+            decoded, pending_text_ref_id
+        )
+        text_refs.update(refs)
 
-        for line in decoded.splitlines():
-            if ":" not in line:
-                continue
-            _, payload = line.split(":", 1)
-            payload = payload.strip()
-            if not payload or payload[0] not in "[{":
-                continue
+        if candidate is not None and (
+            best_candidate is None
+            or len({"prompt", "tags", "negative_tags"}.intersection(candidate.keys()))
+            > len({"prompt", "tags", "negative_tags"}.intersection(best_candidate.keys()))
+        ):
+            best_candidate = candidate
 
-            try:
-                obj = json.loads(payload)
-            except json.JSONDecodeError:
-                continue
+    if best_candidate is None:
+        raise ValueError("Suno metadata not found on track page.")
 
-            for node in _walk(obj):
-                if {"prompt", "tags", "negative_tags"}.issubset(node.keys()):
-                    return {
-                        "prompt": str(node["prompt"]),
-                        "tags": str(node["tags"]),
-                        "negative_tags": str(node["negative_tags"]),
-                    }
+    prompt = best_candidate.get("prompt")
+    tags = best_candidate.get("tags")
+    negative_tags = best_candidate.get("negative_tags")
 
-    raise ValueError("Suno metadata not found on track page.")
+    resolved_prompt = _resolve_prompt_reference(
+        str(prompt) if prompt is not None else None, text_refs
+    )
+
+    return {
+        "prompt": resolved_prompt,
+        "tags": str(tags) if tags is not None else None,
+        "negative_tags": str(negative_tags) if negative_tags is not None else None,
+    }
