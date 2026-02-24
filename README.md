@@ -1,4 +1,4 @@
-# dekho
+# Dekho
 
 Music Track Database based on Flask, uv, and SQLite. Aims to help me to keep track of my music tracks generated in Suno. Most business logic will be in Flask, and frontend has only minimal vanilla JavaScript.
 
@@ -22,6 +22,23 @@ The app is available at http://127.0.0.1:5001
 ## Database
 
 The SQLite database contains primary data.
+
+Table `tracks` has the following columns:
+- track_id: string, primary key
+- filepath: string
+- title: string
+- artist: string
+- duration: float
+- url: string
+- created: datetime
+- prompt: string
+- tags: string
+- negative_tags: string
+
+Table `track_userata` has the following columns:
+- track_id: string, foreign key to `tracks.track_id`
+- notes: string
+- title_new: string
 
 ## Upcoming features (keep these in mind but **don't develop unless asked**)
 

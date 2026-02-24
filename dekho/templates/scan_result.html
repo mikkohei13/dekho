@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dekho - Scan Results</title>
+</head>
+<body>
+  <h1>Scan Results</h1>
+  <p>Scanned files: {{ scanned }}</p>
+  <p>Stored tracks: {{ stored }}</p>
+  <p>Skipped files: {{ skipped }}</p>
+
+  <h2>Tracks</h2>
+  <ul>
+    {% for track in tracks %}
+      <li>{{ track.track_id }} - {{ track.filepath }}</li>
+    {% else %}
+      <li>No tracks found.</li>
+    {% endfor %}
+  </ul>
+
+  <p><a href="/">Back to home</a></p>
+</body>
+</html>
