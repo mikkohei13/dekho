@@ -14,20 +14,12 @@ LABEL_CATALOG: tuple[dict[str, str | tuple[dict[str, str], ...]], ...] = (
         ),
     },
     {
-        "category": "generation",
-        "display_name": "generation",
+        "category": "like",
+        "display_name": "like",
         "labels": (
-            {"key": "generation.published_on_suno", "label": "published on Suno"},
-            {"key": "generation.own_cover", "label": "own cover"},
-            {"key": "generation.other_cover", "label": "other cover"},
-            {"key": "generation.ace_cover", "label": "ace-cover"},
-        ),
-    },
-    {
-        "category": "persona",
-        "display_name": "persona",
-        "labels": (
-            {"key": "persona.shadowrun", "label": "shadowrun"},
+            {"key": "like.like1", "label": "like1"},
+            {"key": "like.like2", "label": "like2"},
+            {"key": "like.like3", "label": "like3"},
         ),
     },
     {
@@ -50,21 +42,29 @@ LABEL_CATALOG: tuple[dict[str, str | tuple[dict[str, str], ...]], ...] = (
         ),
     },
     {
+        "category": "generation",
+        "display_name": "generation",
+        "labels": (
+            {"key": "generation.published_on_suno", "label": "published on Suno"},
+            {"key": "generation.own_cover", "label": "own cover"},
+            {"key": "generation.other_cover", "label": "other cover"},
+            {"key": "generation.ace_cover", "label": "ace-cover"},
+        ),
+    },
+    {
+        "category": "persona",
+        "display_name": "persona",
+        "labels": (
+            {"key": "persona.shadowrun", "label": "shadowrun"},
+        ),
+    },
+    {
         "category": "issue",
         "display_name": "issue",
         "labels": (
             {"key": "issue.cut_short", "label": "cut short"},
             {"key": "issue.distortion", "label": "distortion"},
             {"key": "issue.other", "label": "other"},
-        ),
-    },
-    {
-        "category": "like",
-        "display_name": "like",
-        "labels": (
-            {"key": "like.like1", "label": "like1"},
-            {"key": "like.like2", "label": "like2"},
-            {"key": "like.like3", "label": "like3"},
         ),
     },
 )

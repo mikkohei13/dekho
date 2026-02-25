@@ -238,12 +238,9 @@
           options.push({ key, label, categoryName });
         });
         if (options.length > 0) {
-          options.sort((a, b) => a.label.localeCompare(b.label));
           categories.push({ categoryName, options });
         }
       });
-
-      categories.sort((a, b) => a.categoryName.localeCompare(b.categoryName));
 
       tracksLabelFilterOptions.innerHTML = categories.map(({ categoryName, options }) => {
         const optionsHtml = options.map(({ key, label }) => {

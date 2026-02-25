@@ -70,7 +70,8 @@ uv run dev_db_summary.py
 
 ## Upcoming features (keep these in mind but **don't develop unless asked**)
 
-- Extract track image from mp3
+- Show filters on navbar, keep all labels visible
+- Show labels in the same order as they are in the catalog
 - Improve UI design
 - Add labels to tracks (e.g. "good", "bad")
 - Add genres to tracks
