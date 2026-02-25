@@ -34,26 +34,39 @@ Use this command to get more information about the database:
 uv run dev_db_summary.py
 ```
 
-Table `tracks_file_data` has the following columns:
-- track_id: string, primary key
-- filepath: string
-- title: string
-- artist: string
-- duration: float
-- url: string
-- date_created: datetime
-- date_added: datetime
+- label_definitions
+  • id (INTEGER, NULL PK)
+  • key (TEXT, NOT NULL)
+  • category (TEXT, NOT NULL)
+  • label (TEXT, NOT NULL)
 
-Table `track_remote_data` has the following columns:
-- track_id: string, foreign key to `tracks_file_data.track_id`
-- prompt: string
-- tags: string
-- negative_tags: string
+- track_remote_data
+  • track_id (TEXT, NULL PK)
+  • prompt (TEXT, NULL)
+  • tags (TEXT, NULL)
+  • negative_tags (TEXT, NULL)
+  • FKs: track_id -> tracks_file_data.track_id
 
-Table `track_user_data` has the following columns:
-- track_id: string, foreign key to `tracks_file_data.track_id`
-- notes: string
-- title_new: string
+- track_user_data
+  • track_id (TEXT, NULL PK)
+  • notes (TEXT, NULL)
+  • title_new (TEXT, NULL)
+  • FKs: track_id -> tracks_file_data.track_id
+
+- track_user_data_labels
+  • track_id (TEXT, NOT NULL PK)
+  • label_id (INTEGER, NOT NULL PK)
+  • FKs: label_id -> label_definitions.id, track_id -> track_user_data.track_id
+
+- tracks_file_data
+  • track_id (TEXT, NULL PK)
+  • filepath (TEXT, NULL)
+  • title (TEXT, NULL)
+  • artist (TEXT, NULL)
+  • duration (REAL, NULL)
+  • url (TEXT, NULL)
+  • date_created (TEXT, NULL)
+  • date_added (TEXT, NULL)
 
 ## Upcoming features (keep these in mind but **don't develop unless asked**)
 
