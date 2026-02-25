@@ -33,6 +33,7 @@ def create_app() -> Flask:
             return ("\n".join(lines), 500, {"Content-Type": "text/plain; charset=utf-8"})
 
         music_root = Path("./music").resolve()
+        label_catalog = get_label_catalog()
         tracks_in_music: list[dict[str, object]] = []
 
         for row in get_all_tracks_file_data():
@@ -42,6 +43,7 @@ def create_app() -> Flask:
             title_new = str(row["title_new"]) if row["title_new"] else ""
             tags = str(row["tags"]) if row["tags"] else ""
             labels = row["labels"] if isinstance(row.get("labels"), list) else []
+            label_keys = row["label_keys"] if isinstance(row.get("label_keys"), list) else []
             if not track_id or not filepath:
                 continue
 
@@ -62,11 +64,16 @@ def create_app() -> Flask:
                     "title": title or "",
                     "tags": tags,
                     "labels": labels,
+                    "label_keys": label_keys,
                     "has_remote_tags": bool(tags.strip()),
                 }
             )
 
-        return render_template("index.html", tracks=tracks_in_music)
+        return render_template(
+            "index.html",
+            tracks=tracks_in_music,
+            label_catalog=label_catalog,
+        )
 
     @app.get("/scan")
     def scan() -> str:

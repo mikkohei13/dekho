@@ -96,6 +96,7 @@ body {
 .tracks-filter {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.6rem;
   margin-top: 0.55rem;
 }
@@ -119,6 +120,124 @@ body {
   color: var(--text-muted);
   font-size: 0.9rem;
   white-space: nowrap;
+  margin-left: auto;
+}
+
+.tracks-label-filter {
+  position: relative;
+}
+
+.tracks-label-filter > summary {
+  list-style: none;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.38rem 0.55rem;
+  color: var(--text);
+  background: rgba(12, 16, 24, 0.65);
+  user-select: none;
+  white-space: nowrap;
+}
+
+.tracks-label-filter > summary::-webkit-details-marker {
+  display: none;
+}
+
+.tracks-label-filter[open] > summary {
+  border-color: var(--accent);
+}
+
+.tracks-label-filter-popover {
+  position: absolute;
+  right: 0;
+  z-index: 4;
+  width: min(360px, 90vw);
+  max-height: 320px;
+  margin-top: 0.35rem;
+  padding: 0.5rem;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(17, 22, 31, 0.97);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.34);
+}
+
+.tracks-label-filter-options {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.tracks-filter-category {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.45rem;
+}
+
+.tracks-filter-category:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.tracks-filter-category-heading {
+  margin: 0 0 0.22rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.tracks-filter-category-options {
+  display: grid;
+  gap: 0.22rem;
+}
+
+.tracks-filter-option {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.22rem 0.3rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.tracks-filter-option:hover {
+  background: rgba(121, 168, 255, 0.12);
+}
+
+.tracks-filter-option input {
+  width: auto;
+}
+
+#tracks-clear-filters-btn {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.38rem 0.55rem;
+  color: var(--text);
+  background: rgba(12, 16, 24, 0.65);
+  cursor: pointer;
+  line-height: 1;
+}
+
+#tracks-clear-filters-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+#tracks-clear-filters-btn:not(:disabled):hover,
+#tracks-clear-filters-btn:not(:disabled):focus-visible {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.tracks-selected-labels {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-top: 0.45rem;
+}
+
+.track-item-labels {
+  margin-top: 0.18rem;
+  font-size: 0.82rem;
 }
 
 #selected-track-player {
@@ -383,6 +502,10 @@ body {
   border-radius: 8px;
 }
 
+.track-label-category.playlist {
+  background: rgba(121, 168, 255, 0.12);
+}
+
 .track-label-category legend {
   color: var(--text-muted);
   font-size: 0.82rem;
@@ -469,5 +592,9 @@ code {
 @media (max-width: 900px) {
   #app-shell {
     grid-template-columns: 1fr;
+  }
+
+  .tracks-label-filter-popover {
+    width: min(94vw, 360px);
   }
 }

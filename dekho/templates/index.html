@@ -17,15 +17,28 @@
       <header class="panel-header">
         <div class="tracks-filter">
           <input id="tracks-filter-input" type="text" placeholder="Filter tracks...">
+          <details id="tracks-label-filter" class="tracks-label-filter">
+            <summary id="tracks-label-filter-summary">Labels (0)</summary>
+            <div class="tracks-label-filter-popover">
+              <div id="tracks-label-filter-options" class="tracks-label-filter-options"></div>
+            </div>
+          </details>
+          <button id="tracks-clear-filters-btn" type="button" aria-label="Clear filters" title="Clear filters">X</button>
           <span id="tracks-filter-count"></span>
         </div>
+        <div id="tracks-selected-labels" class="tracks-selected-labels" hidden></div>
       </header>
 
       <section id="tracks-list">
         {% if tracks %}
           <ul class="track-items">
             {% for track in tracks %}
-              <li class="track-item" data-track-id="{{ track.track_id }}" tabindex="0">
+              <li
+                class="track-item"
+                data-track-id="{{ track.track_id }}"
+                data-label-keys="{{ track.label_keys | join(',') }}"
+                tabindex="0"
+              >
                 <div class="track-item-content">
                   <img
                     class="track-item-image"
@@ -42,6 +55,13 @@
                       {% endif %}
                     </h2>
                     <p class="track-id">{{ track.track_id }}</p>
+                    <p class="track-meta track-item-labels" data-track-item-labels>
+                      {% if track.labels %}
+                        {{ track.labels | join(", ") }}
+                      {% else %}
+                        -
+                      {% endif %}
+                    </p>
                     <div class="track-meta-block">
                       <p class="track-meta" id="track-meta-title">
                         {{ track.title or "-" }}
@@ -49,11 +69,6 @@
                       {% if track.tags %}
                         <p class="track-meta" id="track-meta-tags">
                           {{ track.tags }}
-                        </p>
-                      {% endif %}
-                      {% if track.labels %}
-                        <p class="track-meta" id="track-meta-labels">
-                          {{ track.labels | join(", ") }}
                         </p>
                       {% endif %}
                     </div>
@@ -80,17 +95,54 @@
       </div>
     </section>
   </main>
+  <script id="tracks-label-catalog-data" type="application/json">{{ label_catalog | default([], true) | tojson }}</script>
   <script>
+    const tracksLabelCatalogElement = document.getElementById("tracks-label-catalog-data");
+    let tracksLabelCatalog = [];
+    if (tracksLabelCatalogElement instanceof HTMLScriptElement) {
+      try {
+        const parsedCatalog = JSON.parse(tracksLabelCatalogElement.textContent || "[]");
+        if (Array.isArray(parsedCatalog)) {
+          tracksLabelCatalog = parsedCatalog;
+        }
+      } catch (error) {
+        tracksLabelCatalog = [];
+      }
+    }
     const trackItems = Array.from(document.querySelectorAll(".track-item"));
     const tracksFilterInput = document.getElementById("tracks-filter-input");
     const tracksFilterCount = document.getElementById("tracks-filter-count");
+    const tracksLabelFilter = document.getElementById("tracks-label-filter");
+    const tracksLabelFilterSummary = document.getElementById("tracks-label-filter-summary");
+    const tracksLabelFilterOptions = document.getElementById("tracks-label-filter-options");
+    const tracksSelectedLabels = document.getElementById("tracks-selected-labels");
+    const tracksClearFiltersButton = document.getElementById("tracks-clear-filters-btn");
     const contentPanel = document.getElementById("content-panel");
     const contentPanelBody = document.getElementById("content-panel-body");
     const persistentTrackHeader = document.getElementById("persistent-track-header");
     const persistentTrackTitle = document.getElementById("persistent-track-title");
     const selectedTrackPlayer = document.getElementById("selected-track-player");
+    const selectedTrackFilterLabelKeys = new Set();
+    const trackLabelByKey = new Map();
     let activeTrackId = null;
     let hasUnsavedUserDataChanges = false;
+
+    if (Array.isArray(tracksLabelCatalog)) {
+      tracksLabelCatalog.forEach((group) => {
+        const labels = Array.isArray(group?.labels) ? group.labels : [];
+        labels.forEach((entry) => {
+          if (!entry || typeof entry !== "object") {
+            return;
+          }
+          const key = typeof entry.key === "string" ? entry.key : "";
+          const label = typeof entry.label === "string" ? entry.label : "";
+          if (!key || !label || trackLabelByKey.has(key)) {
+            return;
+          }
+          trackLabelByKey.set(key, label);
+        });
+      });
+    }
 
     function escapeHtml(value) {
       return String(value ?? "").replace(/[&<>"']/g, (char) => (
@@ -119,15 +171,149 @@
       tracksFilterCount.textContent = `${matched}/${total} tracks`;
     }
 
+    function parseLabelKeys(labelKeysValue) {
+      return String(labelKeysValue ?? "")
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean);
+    }
+
+    function getTrackItemLabelKeys(item) {
+      return new Set(parseLabelKeys(item.dataset.labelKeys));
+    }
+
+    function updateTrackItemLabels(trackId, labelKeys) {
+      const trackItem = document.querySelector(`.track-item[data-track-id="${CSS.escape(trackId)}"]`);
+      if (!(trackItem instanceof HTMLElement)) {
+        return;
+      }
+
+      const normalizedKeys = Array.isArray(labelKeys)
+        ? labelKeys
+          .filter((key) => typeof key === "string" && key)
+          .map((key) => key.trim())
+          .filter(Boolean)
+        : [];
+      trackItem.dataset.labelKeys = normalizedKeys.join(",");
+
+      const labelsElement = trackItem.querySelector("[data-track-item-labels]");
+      if (!(labelsElement instanceof HTMLElement)) {
+        return;
+      }
+
+      const visibleLabels = normalizedKeys
+        .map((key) => trackLabelByKey.get(key) || key)
+        .join(", ");
+      labelsElement.textContent = visibleLabels || "-";
+    }
+
+    function renderTrackLabelFilterOptions() {
+      if (!(tracksLabelFilterOptions instanceof HTMLElement)) {
+        return;
+      }
+      if (!Array.isArray(tracksLabelCatalog) || tracksLabelCatalog.length === 0) {
+        tracksLabelFilterOptions.innerHTML = '<p class="empty-state">No labels configured.</p>';
+        return;
+      }
+
+      const categories = [];
+      tracksLabelCatalog.forEach((group) => {
+        const categoryName = typeof group?.display_name === "string" && group.display_name
+          ? group.display_name
+          : (typeof group?.category === "string" ? group.category : "");
+        const labels = Array.isArray(group?.labels) ? group.labels : [];
+        if (!categoryName || labels.length === 0) {
+          return;
+        }
+        const options = [];
+        labels.forEach((labelEntry) => {
+          if (!labelEntry || typeof labelEntry !== "object") {
+            return;
+          }
+          const key = typeof labelEntry.key === "string" ? labelEntry.key : "";
+          const label = typeof labelEntry.label === "string" ? labelEntry.label : "";
+          if (!key || !label) {
+            return;
+          }
+          options.push({ key, label, categoryName });
+        });
+        if (options.length > 0) {
+          options.sort((a, b) => a.label.localeCompare(b.label));
+          categories.push({ categoryName, options });
+        }
+      });
+
+      categories.sort((a, b) => a.categoryName.localeCompare(b.categoryName));
+
+      tracksLabelFilterOptions.innerHTML = categories.map(({ categoryName, options }) => {
+        const optionsHtml = options.map(({ key, label }) => {
+          const inputId = `tracks-filter-label-${domSafeValue(key)}`;
+          const checked = selectedTrackFilterLabelKeys.has(key) ? " checked" : "";
+          return `
+            <label for="${escapeHtml(inputId)}" class="tracks-filter-option">
+              <input
+                id="${escapeHtml(inputId)}"
+                class="tracks-filter-option-input"
+                type="checkbox"
+                data-label-key="${escapeHtml(key)}"${checked}
+              >
+              <span>${escapeHtml(label)}</span>
+            </label>
+          `;
+        }).join("");
+
+        return `
+          <section class="tracks-filter-category">
+            <h4 class="tracks-filter-category-heading">${escapeHtml(categoryName)}</h4>
+            <div class="tracks-filter-category-options">${optionsHtml}</div>
+          </section>
+        `;
+      }).join("");
+    }
+
+    function updateTracksFilterSummary() {
+      if (tracksLabelFilterSummary instanceof HTMLElement) {
+        tracksLabelFilterSummary.textContent = `Labels (${selectedTrackFilterLabelKeys.size})`;
+      }
+
+      if (tracksSelectedLabels instanceof HTMLElement) {
+        const selectedLabels = Array.from(selectedTrackFilterLabelKeys)
+          .map((key) => trackLabelByKey.get(key) || key);
+        if (selectedLabels.length === 0) {
+          tracksSelectedLabels.hidden = true;
+          tracksSelectedLabels.textContent = "";
+        } else {
+          const maxVisible = 8;
+          const visibleLabels = selectedLabels.slice(0, maxVisible).join(", ");
+          const moreCount = selectedLabels.length - maxVisible;
+          tracksSelectedLabels.hidden = false;
+          tracksSelectedLabels.textContent = moreCount > 0
+            ? `Selected: ${visibleLabels} (+${moreCount})`
+            : `Selected: ${visibleLabels}`;
+        }
+      }
+
+      if (tracksClearFiltersButton instanceof HTMLButtonElement) {
+        const hasTextQuery = tracksFilterInput instanceof HTMLInputElement && tracksFilterInput.value.trim() !== "";
+        tracksClearFiltersButton.disabled = !hasTextQuery && selectedTrackFilterLabelKeys.size === 0;
+      }
+    }
+
     function applyTracksFilter() {
       const query = String(tracksFilterInput instanceof HTMLInputElement ? tracksFilterInput.value : "")
         .trim()
         .toLocaleLowerCase();
       trackItems.forEach((item) => {
         const haystack = (item.textContent || "").toLocaleLowerCase();
-        item.hidden = query ? !haystack.includes(query) : false;
+        const textMatches = query ? haystack.includes(query) : true;
+        const trackLabelKeys = getTrackItemLabelKeys(item);
+        const labelsMatch = Array.from(selectedTrackFilterLabelKeys).every(
+          (labelKey) => trackLabelKeys.has(labelKey)
+        );
+        item.hidden = !(textMatches && labelsMatch);
       });
       updateTracksFilterCount();
+      updateTracksFilterSummary();
     }
 
     function domSafeValue(value) {
@@ -184,7 +370,7 @@
           .join("");
 
         return `
-          <fieldset class="track-label-category">
+          <fieldset class="track-label-category ${domSafeValue(displayName)}">
             <legend>${escapeHtml(displayName)}</legend>
             <div class="track-label-options">
               ${optionsHtml}
@@ -286,7 +472,6 @@
               <label for="notes-input">notes</label>
               <textarea id="notes-input" name="notes" rows="4">${escapeHtml(notes)}</textarea>
               <div class="track-labels">
-                <label>labels</label>
                 <div class="track-labels-groups">
                   ${renderLabelGroups(labelCatalog, labels)}
                 </div>
@@ -344,6 +529,7 @@
         }
         const data = await response.json();
         updateTrackListTitle(trackId, data);
+        updateTrackItemLabels(trackId, data.labels);
         updatePersistentTrackHeader(data);
         renderDetails(data);
       } catch (error) {
@@ -373,6 +559,7 @@
           throw new Error(payload.error || "Failed to fetch data from Suno.");
         }
         updateTrackListTitle(trackId, payload);
+        updateTrackItemLabels(trackId, payload.labels);
         updatePersistentTrackHeader(payload);
         renderDetails(payload);
       } catch (fetchError) {
@@ -436,6 +623,7 @@
           throw new Error(payload.error || "Failed to save track data.");
         }
         updateTrackListTitle(trackId, payload);
+        updateTrackItemLabels(trackId, payload.labels);
         updatePersistentTrackHeader(payload);
         renderDetails(payload);
       } catch (saveError) {
@@ -481,6 +669,45 @@
     if (tracksFilterInput instanceof HTMLInputElement) {
       tracksFilterInput.addEventListener("input", applyTracksFilter);
     }
+    if (tracksLabelFilterOptions instanceof HTMLElement) {
+      tracksLabelFilterOptions.addEventListener("change", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement) || !target.classList.contains("tracks-filter-option-input")) {
+          return;
+        }
+        const labelKey = target.dataset.labelKey;
+        if (!labelKey) {
+          return;
+        }
+        if (target.checked) {
+          selectedTrackFilterLabelKeys.add(labelKey);
+        } else {
+          selectedTrackFilterLabelKeys.delete(labelKey);
+        }
+        applyTracksFilter();
+      });
+    }
+    if (tracksClearFiltersButton instanceof HTMLButtonElement) {
+      tracksClearFiltersButton.addEventListener("click", () => {
+        selectedTrackFilterLabelKeys.clear();
+        if (tracksFilterInput instanceof HTMLInputElement) {
+          tracksFilterInput.value = "";
+        }
+        if (tracksLabelFilter instanceof HTMLDetailsElement) {
+          tracksLabelFilter.open = false;
+        }
+        renderTrackLabelFilterOptions();
+        applyTracksFilter();
+      });
+    }
+    if (tracksLabelFilter instanceof HTMLDetailsElement) {
+      tracksLabelFilter.addEventListener("toggle", () => {
+        if (tracksLabelFilter.open) {
+          renderTrackLabelFilterOptions();
+        }
+      });
+    }
+    renderTrackLabelFilterOptions();
     applyTracksFilter();
 
     contentPanel.addEventListener("click", (event) => {
@@ -489,6 +716,12 @@
         return;
       }
       if (target.id === "get-remote-data-btn" && activeTrackId) {
+        if (hasUnsavedUserDataChanges) {
+          const shouldContinue = window.confirm("You have unsaved changes. Continue without saving?");
+          if (!shouldContinue) {
+            return;
+          }
+        }
         fetchRemoteData(activeTrackId);
       }
       if (target.id === "save-track-user-data-btn" && activeTrackId) {

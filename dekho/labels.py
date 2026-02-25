@@ -37,13 +37,14 @@ LABEL_CATALOG: tuple[dict[str, str | tuple[dict[str, str], ...]], ...] = (
             {"key": "setting.story", "label": "story"},
             {"key": "setting.mythical", "label": "mythical"},
             {"key": "setting.doggerland", "label": "doggerland"},
+            {"key": "setting.shadowrun", "label": "shadowrun"},
+            {"key": "setting.western", "label": "western"},
         ),
     },
     {
         "category": "type",
         "display_name": "type",
         "labels": (
-            {"key": "type.lyrical", "label": "lyrical"},
             {"key": "type.instrumental", "label": "instrumental"},
             {"key": "type.epic", "label": "epic"},
         ),
