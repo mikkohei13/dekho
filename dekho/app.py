@@ -114,6 +114,27 @@ def create_app() -> Flask:
 
         return send_file(resolved_path)
 
+    @app.get("/api/tracks/<track_id>/image")
+    def track_image(track_id: str):
+        normalized_track_id = track_id.strip()
+        if not normalized_track_id:
+            return jsonify({"error": "Track ID is missing."}), 400
+
+        app_root = Path(".").resolve()
+        images_root = (app_root / "images").resolve()
+        image_path = (
+            images_root
+            / normalized_track_id[0]
+            / f"{normalized_track_id}.jpg"
+        ).resolve()
+
+        if not image_path.is_relative_to(images_root):
+            return jsonify({"error": "Track image path is outside images root."}), 400
+        if not image_path.is_file():
+            return jsonify({"error": "Track image not found."}), 404
+
+        return send_file(image_path)
+
     @app.post("/api/tracks/<track_id>/remote-data")
     def fetch_track_remote_data(track_id: str):
         details = get_track_details(track_id)

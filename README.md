@@ -1,6 +1,6 @@
 # Dekho
 
-Music Track Database based on Flask, uv, and SQLite. Aims to help me to keep track of my music tracks generated in Suno. Most business logic will be in Flask, and frontend has only minimal vanilla JavaScript.
+Music Track Database based on Flask, uv, and SQLite. Aims to help me to keep track of music tracks generated in Suno. Most business logic is in Flask, and frontend has only minimal vanilla JavaScript.
 
 Features:
 - Shows a list of tracks with their metadata.
@@ -80,6 +80,7 @@ uv run dev_db_summary.py
 
 - Keep it simple
 - This is one-person app, so avoid premature optimization
+- No accessibility features
 - No authentication
 - Desktop-optimized UI, no mobile support
 - No JavaScript frameworks

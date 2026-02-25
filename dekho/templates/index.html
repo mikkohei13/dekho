@@ -26,27 +26,39 @@
           <ul class="track-items">
             {% for track in tracks %}
               <li class="track-item" data-track-id="{{ track.track_id }}" tabindex="0">
-                <h2 class="track-title">
-                  {{ track.display_title }}
-                  {% if track.has_remote_tags %}
-                    <span class="remote-tags-indicator">✦</span>
-                  {% endif %}
-                </h2>
-                <p class="track-id">{{ track.track_id }}</p>
-                <div class="track-meta-block">
-                  <p class="track-meta" id="track-meta-title">
-                    {{ track.title or "-" }}
-                  </p>
-                  {% if track.tags %}
-                    <p class="track-meta" id="track-meta-tags">
-                      {{ track.tags }}
-                    </p>
-                  {% endif %}
-                  {% if track.labels %}
-                    <p class="track-meta" id="track-meta-labels">
-                      {{ track.labels | join(", ") }}
-                    </p>
-                  {% endif %}
+                <div class="track-item-content">
+                  <img
+                    class="track-item-image"
+                    src="/api/tracks/{{ track.track_id }}/image"
+                    alt="{{ track.display_title }} cover art"
+                    width="50"
+                    height="50"
+                    loading="lazy"
+                  >
+                  <div class="track-item-body">
+                    <h2 class="track-title">
+                      {{ track.display_title }}
+                      {% if track.has_remote_tags %}
+                        <span class="remote-tags-indicator">✦</span>
+                      {% endif %}
+                    </h2>
+                    <p class="track-id">{{ track.track_id }}</p>
+                    <div class="track-meta-block">
+                      <p class="track-meta" id="track-meta-title">
+                        {{ track.title or "-" }}
+                      </p>
+                      {% if track.tags %}
+                        <p class="track-meta" id="track-meta-tags">
+                          {{ track.tags }}
+                        </p>
+                      {% endif %}
+                      {% if track.labels %}
+                        <p class="track-meta" id="track-meta-labels">
+                          {{ track.labels | join(", ") }}
+                        </p>
+                      {% endif %}
+                    </div>
+                  </div>
                 </div>
               </li>
             {% endfor %}
@@ -79,6 +91,7 @@
     const persistentTrackTitle = document.getElementById("persistent-track-title");
     const selectedTrackPlayer = document.getElementById("selected-track-player");
     let activeTrackId = null;
+    let hasUnsavedUserDataChanges = false;
 
     function escapeHtml(value) {
       return String(value ?? "").replace(/[&<>"']/g, (char) => (
@@ -120,6 +133,14 @@
 
     function domSafeValue(value) {
       return String(value ?? "").replace(/[^a-zA-Z0-9_-]/g, "-");
+    }
+
+    function getTrackImageSrc(trackId) {
+      const id = String(trackId ?? "").trim();
+      if (!id) {
+        return "";
+      }
+      return `/api/tracks/${encodeURIComponent(id)}/image`;
     }
 
     function renderLabelGroups(labelCatalog, selectedLabels) {
@@ -220,6 +241,24 @@
       }
     }
 
+    function setTrackUserDataSaveStatus(statusText) {
+      const saveStatus = document.getElementById("track-user-data-save-status");
+      if (!(saveStatus instanceof HTMLElement)) {
+        return;
+      }
+      saveStatus.textContent = statusText;
+    }
+
+    function markTrackUserDataSaved() {
+      hasUnsavedUserDataChanges = false;
+      setTrackUserDataSaveStatus("saved");
+    }
+
+    function markTrackUserDataUnsaved() {
+      hasUnsavedUserDataChanges = true;
+      setTrackUserDataSaveStatus("unsaved changes");
+    }
+
     function renderDetails(data) {
       const title = data.title ?? "";
       const titleNew = data.title_new ?? "";
@@ -255,11 +294,19 @@
               </div>
               <div class="track-user-data-actions">
                 <button id="save-track-user-data-btn" type="button">Save</button>
+                <span id="track-user-data-save-status" class="track-user-data-save-status">saved</span>
                 <span id="track-user-data-error" class="track-user-data-error"></span>
               </div>
             </form>
           </div>
           <div class="track-details">
+            <img
+              class="track-details-image"
+              src="${escapeHtml(getTrackImageSrc(trackId))}"
+              alt="${escapeHtml(getDisplayTitle(data) || trackId || "Track")} cover art"
+              width="200"
+              height="200"
+            >
             <p id="track-info-title">${escapeHtml(title || "-")}</p>
             <p id="track-info-id">${escapeHtml(trackId)}</p>
             <p id="track-info-url">${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>` : "-"}<p>
@@ -281,6 +328,7 @@
           </div>
         </section>
       `;
+      markTrackUserDataSaved();
     }
 
     async function loadTrackDetails(trackId, item) {
@@ -409,10 +457,24 @@
         return;
       }
 
-      item.addEventListener("click", () => loadTrackDetails(trackId, item));
+      item.addEventListener("click", () => {
+        if (hasUnsavedUserDataChanges && activeTrackId && activeTrackId !== trackId) {
+          const shouldContinue = window.confirm("You have unsaved changes. Leave this track without saving?");
+          if (!shouldContinue) {
+            return;
+          }
+        }
+        loadTrackDetails(trackId, item);
+      });
       item.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
+          if (hasUnsavedUserDataChanges && activeTrackId && activeTrackId !== trackId) {
+            const shouldContinue = window.confirm("You have unsaved changes. Leave this track without saving?");
+            if (!shouldContinue) {
+              return;
+            }
+          }
           loadTrackDetails(trackId, item);
         }
       });
@@ -433,6 +495,26 @@
       }
       if (target.id === "save-track-user-data-btn" && activeTrackId) {
         saveUserData(activeTrackId);
+      }
+    });
+
+    contentPanel.addEventListener("input", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      if (target.closest("#track-user-data-form")) {
+        markTrackUserDataUnsaved();
+      }
+    });
+
+    contentPanel.addEventListener("change", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      if (target.closest("#track-user-data-form")) {
+        markTrackUserDataUnsaved();
       }
     });
   </script>

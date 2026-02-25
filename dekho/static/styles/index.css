@@ -168,6 +168,24 @@ body {
   background: rgba(121, 168, 255, 0.28);
 }
 
+.track-item-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+
+.track-item-image {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border-radius: 6px;
+}
+
+.track-item-body {
+  min-width: 0;
+}
+
 .track-title {
   margin: 0;
   font-size: 1rem;
@@ -218,6 +236,15 @@ body {
 
 .track-details {
   margin: 1rem 0 0;
+}
+
+.track-details-image {
+  display: block;
+  width: 200px;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin: 0 0 0.75rem;
 }
 
 #track-info {
