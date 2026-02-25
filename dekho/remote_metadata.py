@@ -26,7 +26,7 @@ def _read_html(url: str) -> str:
 
 
 TEXT_REF_RE = re.compile(r"^(\d+):T[0-9a-fA-F]+,$")
-TEXT_REF_INLINE_RE = re.compile(r"^(\d+):T[0-9a-fA-F]+,(.*)$", re.DOTALL)
+TEXT_REF_INLINE_RE = re.compile(r"^(\d+):T[0-9a-fA-F]+,(.+)$", re.DOTALL)
 
 
 def _extract_from_decoded_chunk(
