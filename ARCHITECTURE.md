@@ -31,7 +31,7 @@ Lyrics are fetched server-side from public Suno track pages by parsing Next.js F
 ## Labels
 
 - Source of truth is `dekho/labels.py` (`LABEL_CATALOG`): each label has a stable `key`, `category`, and display `label`.
-- On startup, `init_db()` seeds `label_definitions` from catalog with upsert-by-key (`key` is unique).
+- On startup, `init_db()` seeds `label_definitions` from catalog with upsert-by-key (`key` is unique). This does not delete old keys that were removed from LABEL_CATALOG.
 - Track assignments are stored in `track_user_data_labels` (`track_id`, `label_id`) and saved via `POST /api/tracks/<track_id>/user-data`.
 - API payload uses label keys (`labels: string[]`), validated against current catalog (`normalize_label_keys`).
 - Track filtering is key-based via `POST /api/tracks/filter-by-labels`; SQL returns tracks that contain all selected labels.

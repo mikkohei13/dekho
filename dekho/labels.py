@@ -2,6 +2,18 @@ from collections.abc import Iterable
 
 LABEL_CATALOG: tuple[dict[str, str | tuple[dict[str, str], ...]], ...] = (
     {
+        "category": "playlist",
+        "display_name": "playlist",
+        "labels": (
+            {"key": "playlist.story", "label": "story"},
+            {"key": "playlist.mythical", "label": "mythical"},
+            {"key": "playlist.doggerland", "label": "doggerland"},
+            {"key": "playlist.shadowrun", "label": "shadowrun"},
+            {"key": "playlist.retro", "label": "retro"},
+            {"key": "playlist.western", "label": "western"},
+        ),
+    },
+    {
         "category": "generation",
         "display_name": "generation",
         "labels": (
@@ -33,6 +45,7 @@ LABEL_CATALOG: tuple[dict[str, str | tuple[dict[str, str], ...]], ...] = (
         "labels": (
             {"key": "type.lyrical", "label": "lyrical"},
             {"key": "type.instrumental", "label": "instrumental"},
+            {"key": "type.epic", "label": "epic"},
         ),
     },
     {
