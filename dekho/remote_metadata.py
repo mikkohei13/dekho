@@ -25,7 +25,8 @@ def _read_html(url: str) -> str:
         return response.read().decode("utf-8", errors="replace")
 
 
-TEXT_REF_RE = re.compile(r"^(\d+):T\d+,$")
+TEXT_REF_RE = re.compile(r"^(\d+):T[0-9a-fA-F]+,$")
+TEXT_REF_INLINE_RE = re.compile(r"^(\d+):T[0-9a-fA-F]+,(.*)$", re.DOTALL)
 
 
 def _extract_from_decoded_chunk(
@@ -42,7 +43,20 @@ def _extract_from_decoded_chunk(
         text_refs[next_pending] = decoded
         next_pending = None
 
-    for line in decoded.splitlines():
+    lines = decoded.splitlines()
+    for index, line in enumerate(lines):
+        inline_match = TEXT_REF_INLINE_RE.match(line.strip())
+        if inline_match:
+            ref_id = inline_match.group(1)
+            first_part = inline_match.group(2)
+            remainder = "\n".join(lines[index + 1 :])
+            text_value = first_part
+            if remainder:
+                text_value = f"{text_value}\n{remainder}" if text_value else remainder
+            text_refs[ref_id] = text_value
+            next_pending = None
+            break
+
         marker_match = TEXT_REF_RE.match(line.strip())
         if marker_match:
             next_pending = marker_match.group(1)
