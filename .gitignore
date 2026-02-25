@@ -5,6 +5,9 @@
 **/images/**
 *.sqlite3
 
+temp*.html
+temp*.htm
+
 # macOS
 .DS_Store
 

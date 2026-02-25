@@ -66,6 +66,62 @@
       return '<span class="remote-tags-indicator" aria-label="Remote metadata available" title="Remote metadata fetched from Suno">✦</span>';
     }
 
+    function domSafeValue(value) {
+      return String(value ?? "").replace(/[^a-zA-Z0-9_-]/g, "-");
+    }
+
+    function renderLabelGroups(labelCatalog, selectedLabels) {
+      if (!Array.isArray(labelCatalog) || labelCatalog.length === 0) {
+        return '<p class="empty-state">No labels configured.</p>';
+      }
+
+      const selectedKeys = new Set(Array.isArray(selectedLabels) ? selectedLabels : []);
+
+      return labelCatalog.map((group) => {
+        const category = typeof group.category === "string" ? group.category : "";
+        const displayName = typeof group.display_name === "string" ? group.display_name : category;
+        const labels = Array.isArray(group.labels) ? group.labels : [];
+        if (!category || labels.length === 0) {
+          return "";
+        }
+
+        const optionsHtml = labels
+          .map((labelEntry) => {
+            if (!labelEntry || typeof labelEntry !== "object") {
+              return "";
+            }
+            const labelKey = typeof labelEntry.key === "string" ? labelEntry.key : "";
+            const label = typeof labelEntry.label === "string" ? labelEntry.label : "";
+            if (!labelKey || !label) {
+              return "";
+            }
+            const inputId = `track-label-${domSafeValue(labelKey)}`;
+            const checked = selectedKeys.has(labelKey) ? " checked" : "";
+            return `
+              <label for="${escapeHtml(inputId)}" class="track-label-option">
+                <input
+                  id="${escapeHtml(inputId)}"
+                  class="track-label-input"
+                  type="checkbox"
+                  data-label-key="${escapeHtml(labelKey)}"${checked}
+                >
+                <span>${escapeHtml(label)}</span>
+              </label>
+            `;
+          })
+          .join("");
+
+        return `
+          <fieldset class="track-label-category">
+            <legend>${escapeHtml(displayName)}</legend>
+            <div class="track-label-options">
+              ${optionsHtml}
+            </div>
+          </fieldset>
+        `;
+      }).join("");
+    }
+
     function updateTrackListTitle(trackId, data) {
       const trackItem = document.querySelector(`.track-item[data-track-id="${CSS.escape(trackId)}"]`);
       if (!trackItem) {
@@ -95,6 +151,8 @@
       const tags = data.tags ?? "";
       const negativeTags = data.negative_tags ?? "";
       const prompt = data.prompt ?? "";
+      const labels = Array.isArray(data.labels) ? data.labels : [];
+      const labelCatalog = Array.isArray(data.label_catalog) ? data.label_catalog : [];
 
       contentPanel.innerHTML = `
         <section id="track-info" aria-label="Track information">
@@ -110,6 +168,12 @@
               <input id="title-new-input" name="title_new" type="text" value="${escapeHtml(titleNew)}">
               <label for="notes-input">notes</label>
               <textarea id="notes-input" name="notes" rows="4">${escapeHtml(notes)}</textarea>
+              <div class="track-labels">
+                <label>labels</label>
+                <div class="track-labels-groups">
+                  ${renderLabelGroups(labelCatalog, labels)}
+                </div>
+              </div>
               <div class="track-user-data-actions">
                 <button id="save-track-user-data-btn" type="button">Save</button>
                 <span id="track-user-data-error" class="track-user-data-error" aria-live="polite"></span>
@@ -196,6 +260,7 @@
       const error = document.getElementById("track-user-data-error");
       const titleInput = document.getElementById("title-new-input");
       const notesInput = document.getElementById("notes-input");
+      const selectedLabelInputs = contentPanel.querySelectorAll(".track-label-input:checked");
       if (
         !button ||
         !error ||
@@ -209,6 +274,18 @@
       button.disabled = true;
       button.textContent = "Saving...";
 
+      const labels = [];
+      selectedLabelInputs.forEach((input) => {
+        if (!(input instanceof HTMLInputElement)) {
+          return;
+        }
+        const labelKey = input.dataset.labelKey;
+        if (typeof labelKey !== "string" || !labelKey) {
+          return;
+        }
+        labels.push(labelKey);
+      });
+
       try {
         const response = await fetch(`/api/tracks/${encodeURIComponent(trackId)}/user-data`, {
           method: "POST",
@@ -218,6 +295,7 @@
           body: JSON.stringify({
             title_new: titleInput.value,
             notes: notesInput.value,
+            labels,
           }),
         });
         const payload = await response.json();

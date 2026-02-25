@@ -287,6 +287,46 @@ body {
   border-color: var(--accent);
 }
 
+.track-labels {
+  margin-top: 0.15rem;
+}
+
+.track-labels-groups {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.2rem;
+}
+
+.track-label-category {
+  margin: 0;
+  padding: 0.45rem 0.55rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.track-label-category legend {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  padding: 0 0.3rem;
+}
+
+.track-label-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.7rem;
+}
+
+.track-label-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.92rem;
+}
+
+.track-label-option input {
+  width: auto;
+}
+
 .track-user-data-actions {
   display: flex;
   align-items: center;

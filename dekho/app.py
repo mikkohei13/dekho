@@ -4,11 +4,14 @@ from flask import Flask, jsonify, render_template, request, send_file
 
 from .db import (
     get_all_tracks_file_data,
+    get_track_ids_matching_all_labels,
     get_track_details,
+    get_unknown_label_assignments,
     init_db,
     upsert_track_remote_data,
     upsert_track_user_data,
 )
+from .labels import get_label_catalog, normalize_label_keys
 from .remote_metadata import fetch_suno_track_metadata
 from .scan import run_scan
 
@@ -19,6 +22,16 @@ def create_app() -> Flask:
 
     @app.get("/")
     def index() -> str:
+        unknown_labels = get_unknown_label_assignments()
+        if unknown_labels:
+            lines = [
+                "ERROR: database contains label assignments that are missing from LABEL_CATALOG.",
+                "Fix LABEL_CATALOG or remove/update these assignments:",
+            ]
+            for row in unknown_labels:
+                lines.append(f"- track_id={row['track_id']} label_key={row['label_key']}")
+            return ("\n".join(lines), 500, {"Content-Type": "text/plain; charset=utf-8"})
+
         music_root = Path("./music").resolve()
         tracks_in_music: list[dict[str, str]] = []
 
@@ -63,6 +76,10 @@ def create_app() -> Flask:
         if details is None:
             return jsonify({"error": "Track not found"}), 404
         return jsonify(details)
+
+    @app.get("/api/labels")
+    def label_catalog():
+        return jsonify({"label_catalog": get_label_catalog()})
 
     @app.get("/api/tracks/<track_id>/audio")
     def track_audio(track_id: str):
@@ -134,19 +151,40 @@ def create_app() -> Flask:
 
         title_new = payload.get("title_new", "")
         notes = payload.get("notes", "")
+        labels_raw = payload.get("labels", [])
 
         if not isinstance(title_new, str) or not isinstance(notes, str):
             return jsonify({"error": "title_new and notes must be strings."}), 400
+        try:
+            labels = normalize_label_keys(labels_raw)
+        except ValueError as error:
+            return jsonify({"error": str(error)}), 400
 
         upsert_track_user_data(
             track_id=track_id,
             title_new=title_new,
             notes=notes,
+            labels=labels,
         )
 
         updated_details = get_track_details(track_id)
         if updated_details is None:
             return jsonify({"error": "Track not found"}), 404
         return jsonify(updated_details)
+
+    @app.post("/api/tracks/filter-by-labels")
+    def filter_tracks_by_labels():
+        payload = request.get_json(silent=True)
+        if payload is None:
+            payload = {}
+
+        labels_raw = payload.get("labels", [])
+        try:
+            labels = normalize_label_keys(labels_raw)
+        except ValueError as error:
+            return jsonify({"error": str(error)}), 400
+
+        track_ids = get_track_ids_matching_all_labels(labels)
+        return jsonify({"track_ids": track_ids})
 
     return app
