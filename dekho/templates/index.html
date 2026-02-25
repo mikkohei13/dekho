@@ -85,6 +85,9 @@
       const notes = data.notes ?? "";
       const displayTitle = titleNew || title || "Untitled Track";
       const trackId = data.track_id ?? "";
+      const audioSrc = trackId
+        ? `/api/tracks/${encodeURIComponent(trackId)}/audio`
+        : "";
       const url = data.url ?? "";
       const filepath = data.filepath ?? "";
       const duration = data.duration ?? "";
@@ -97,6 +100,9 @@
         <section id="track-info" aria-label="Track information">
           <header class="panel-header">
             <h2>${escapeHtml(displayTitle)}${hasRemoteTags(tags) ? remoteTagsIndicatorHtml() : ""}</h2>
+            <audio id="selected-track-player" controls preload="metadata" src="${escapeHtml(audioSrc)}">
+              Your browser does not support audio playback.
+            </audio>
           </header>
           <div class="track-form">
             <form id="track-user-data-form">

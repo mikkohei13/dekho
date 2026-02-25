@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, send_file
 
 from .db import (
     get_all_tracks_file_data,
@@ -63,6 +63,35 @@ def create_app() -> Flask:
         if details is None:
             return jsonify({"error": "Track not found"}), 404
         return jsonify(details)
+
+    @app.get("/api/tracks/<track_id>/audio")
+    def track_audio(track_id: str):
+        details = get_track_details(track_id)
+        if details is None:
+            return jsonify({"error": "Track not found"}), 404
+
+        filepath = details.get("filepath")
+        if not isinstance(filepath, str) or not filepath:
+            return jsonify({"error": "Track filepath is missing."}), 400
+
+        app_root = Path(".").resolve()
+        music_root = (app_root / "music").resolve()
+        candidate_path = Path(filepath)
+        if candidate_path.is_absolute():
+            return jsonify({"error": "Track filepath must be relative to app root."}), 400
+
+        # DB filepaths are typically stored relative to ./music.
+        resolved_path = (music_root / candidate_path).resolve()
+        if not resolved_path.is_file():
+            # Backward-compatible fallback for any rows stored relative to app root.
+            resolved_path = (app_root / candidate_path).resolve()
+
+        if not resolved_path.is_relative_to(app_root):
+            return jsonify({"error": "Track filepath is outside app root."}), 400
+        if not resolved_path.is_file():
+            return jsonify({"error": "Track audio file not found."}), 404
+
+        return send_file(resolved_path)
 
     @app.post("/api/tracks/<track_id>/remote-data")
     def fetch_track_remote_data(track_id: str):

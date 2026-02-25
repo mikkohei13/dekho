@@ -93,6 +93,12 @@ body {
   letter-spacing: 0.01em;
 }
 
+#selected-track-player {
+  display: block;
+  width: 100%;
+  margin-top: 0.65rem;
+}
+
 #tracks-list {
   margin-top: 1rem;
   margin-left: -1rem;
