@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+import mutagen
+
 from .db import DB_PATH, get_all_tracks_file_data, upsert_track
 from .metadata import extract_file_metadata
 
@@ -68,6 +70,40 @@ def backup_database_if_exists() -> str | None:
 
     shutil.copy2(source_db, destination)
     return str(destination)
+
+
+def export_track_cover_image(track_id: str, file_path: Path) -> None:
+    if not track_id:
+        return
+
+    try:
+        audio = mutagen.File(file_path)
+    except Exception:
+        return
+
+    if audio is None or not audio.tags:
+        return
+
+    cover_bytes: bytes | None = None
+    for key, value in audio.tags.items():
+        if not str(key).startswith("APIC"):
+            continue
+
+        mime = getattr(value, "mime", "")
+        if not isinstance(mime, str) or mime.casefold() != "image/jpeg":
+            continue
+
+        data = getattr(value, "data", None)
+        if isinstance(data, (bytes, bytearray)) and data:
+            cover_bytes = bytes(data)
+            break
+
+    if not cover_bytes:
+        return
+
+    cover_subdir = Path("./images") / track_id[0]
+    cover_subdir.mkdir(parents=True, exist_ok=True)
+    (cover_subdir / f"{track_id}.jpg").write_bytes(cover_bytes)
 
 
 def run_scan(music_dir: Path) -> dict[str, object]:
@@ -159,6 +195,11 @@ def run_scan(music_dir: Path) -> dict[str, object]:
             url=canonical_metadata.get("url"),
             date_created=canonical_metadata.get("date_created"),
         )
+        try:
+            export_track_cover_image(track_id, canonical_file.filepath_resolved)
+        except Exception:
+            # Cover extraction should not break the scan pipeline.
+            pass
         scanned_tracks.append(
             {
                 "track_id": track_id,

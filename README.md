@@ -56,7 +56,11 @@ Table `track_user_data` has the following columns:
 
 ## Upcoming features (keep these in mind but **don't develop unless asked**)
 
-- TBD
+- Extract track image from mp3
+- Improve UI design
+- Add labels to tracks (e.g. "good", "bad")
+- Add genres to tracks
+- Add player that keeps always open on the bottom
 
 ## Development principles
 

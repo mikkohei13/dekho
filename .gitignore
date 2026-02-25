@@ -2,6 +2,7 @@
 **/music/**
 **/music_duplicates/**
 **/database_backups/**
+**/images/**
 *.sqlite3
 
 # macOS
