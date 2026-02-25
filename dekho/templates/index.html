@@ -30,7 +30,6 @@
                   <img
                     class="track-item-image"
                     src="/api/tracks/{{ track.track_id }}/image"
-                    alt="{{ track.display_title }} cover art"
                     width="50"
                     height="50"
                     loading="lazy"
@@ -303,7 +302,6 @@
             <img
               class="track-details-image"
               src="${escapeHtml(getTrackImageSrc(trackId))}"
-              alt="${escapeHtml(getDisplayTitle(data) || trackId || "Track")} cover art"
               width="200"
               height="200"
             >

@@ -163,6 +163,7 @@ def get_all_tracks_file_data() -> list[dict[str, object]]:
             FROM tracks_file_data AS tfd
             LEFT JOIN track_user_data AS tud ON tud.track_id = tfd.track_id
             LEFT JOIN track_remote_data AS trd ON trd.track_id = tfd.track_id
+            ORDER BY tfd.date_created DESC, tfd.filepath COLLATE NOCASE ASC
             """
         ).fetchall()
         label_rows = connection.execute(

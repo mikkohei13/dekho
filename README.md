@@ -34,11 +34,15 @@ Use this command to get more information about the database:
 uv run dev_db_summary.py
 ```
 
-- label_definitions
-  • id (INTEGER, NULL PK)
-  • key (TEXT, NOT NULL)
-  • category (TEXT, NOT NULL)
-  • label (TEXT, NOT NULL)
+- tracks_file_data
+  • track_id (TEXT, NULL PK)
+  • filepath (TEXT, NULL)
+  • title (TEXT, NULL)
+  • artist (TEXT, NULL)
+  • duration (REAL, NULL)
+  • url (TEXT, NULL)
+  • date_created (TEXT, NULL)
+  • date_added (TEXT, NULL)
 
 - track_remote_data
   • track_id (TEXT, NULL PK)
@@ -53,20 +57,16 @@ uv run dev_db_summary.py
   • title_new (TEXT, NULL)
   • FKs: track_id -> tracks_file_data.track_id
 
+- label_definitions
+  • id (INTEGER, NULL PK)
+  • key (TEXT, NOT NULL)
+  • category (TEXT, NOT NULL)
+  • label (TEXT, NOT NULL)
+
 - track_user_data_labels
   • track_id (TEXT, NOT NULL PK)
   • label_id (INTEGER, NOT NULL PK)
   • FKs: label_id -> label_definitions.id, track_id -> track_user_data.track_id
-
-- tracks_file_data
-  • track_id (TEXT, NULL PK)
-  • filepath (TEXT, NULL)
-  • title (TEXT, NULL)
-  • artist (TEXT, NULL)
-  • duration (REAL, NULL)
-  • url (TEXT, NULL)
-  • date_created (TEXT, NULL)
-  • date_added (TEXT, NULL)
 
 ## Upcoming features (keep these in mind but **don't develop unless asked**)
 

@@ -66,7 +66,6 @@ def create_app() -> Flask:
                 }
             )
 
-        tracks_in_music.sort(key=lambda track: track["filepath"].casefold())
         return render_template("index.html", tracks=tracks_in_music)
 
     @app.get("/scan")

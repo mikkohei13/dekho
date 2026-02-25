@@ -182,6 +182,11 @@ body {
   border-radius: 6px;
 }
 
+.track-item-image,
+.track-details-image {
+  background: var(--accent);
+}
+
 .track-item-body {
   min-width: 0;
 }
