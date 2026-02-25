@@ -325,6 +325,14 @@
       return `/api/tracks/${encodeURIComponent(id)}/image`;
     }
 
+    function getTrackSpectrogramSrc(trackId) {
+      const id = String(trackId ?? "").trim();
+      if (!id) {
+        return "";
+      }
+      return `/api/tracks/${encodeURIComponent(id)}/spectrogram`;
+    }
+
     function renderLabelGroups(labelCatalog, selectedLabels) {
       if (!Array.isArray(labelCatalog) || labelCatalog.length === 0) {
         return '<p class="empty-state">No labels configured.</p>';
@@ -486,6 +494,13 @@
               src="${escapeHtml(getTrackImageSrc(trackId))}"
               width="200"
               height="200"
+            >
+            <img
+              class="track-details-spectrogram"
+              src="${escapeHtml(getTrackSpectrogramSrc(trackId))}"
+              alt="Spectrogram"
+              loading="lazy"
+              onerror="this.hidden = true;"
             >
             <p id="track-info-title">${escapeHtml(title || "-")}</p>
             <p id="track-info-id">${escapeHtml(trackId)}</p>

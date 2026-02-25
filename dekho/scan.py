@@ -2,15 +2,22 @@ from __future__ import annotations
 
 import os
 import shutil
+import subprocess
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+import matplotlib
 import mutagen
+import numpy as np
 
 from .db import DB_PATH, get_all_tracks_file_data, upsert_track
 from .metadata import extract_file_metadata
+
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 
 @dataclass(frozen=True)
@@ -19,6 +26,14 @@ class TrackFile:
     filepath: Path
     filepath_resolved: Path
     filepath_compare_key: str
+
+
+SPECTROGRAM_OUTPUT_WIDTH_PX = 500
+SPECTROGRAM_OUTPUT_HEIGHT_PX = 256
+SPECTROGRAM_DPI = 100
+SPECTROGRAM_SAMPLE_RATE = 22050
+SPECTROGRAM_MAX_MINUTES = 5
+SPECTROGRAM_MAX_DURATION_SECONDS = SPECTROGRAM_MAX_MINUTES * 60
 
 
 def normalize_compare_key(path: Path | str, base_dir: Path | None = None) -> str:
@@ -104,6 +119,70 @@ def export_track_cover_image(track_id: str, file_path: Path) -> None:
     cover_subdir = Path("./images") / track_id[0]
     cover_subdir.mkdir(parents=True, exist_ok=True)
     (cover_subdir / f"{track_id}.jpg").write_bytes(cover_bytes)
+
+
+def _read_audio_mono_f32(input_path: Path, sample_rate: int) -> np.ndarray:
+    command = [
+        "ffmpeg",
+        "-v",
+        "error",
+        "-i",
+        str(input_path),
+        "-f",
+        "f32le",
+        "-acodec",
+        "pcm_f32le",
+        "-ac",
+        "1",
+        "-ar",
+        str(sample_rate),
+        "pipe:1",
+    ]
+    result = subprocess.run(command, capture_output=True, check=True)
+    samples = np.frombuffer(result.stdout, dtype=np.float32)
+    if samples.size == 0:
+        raise ValueError(f"No audio samples decoded from '{input_path}'.")
+    return samples
+
+
+def export_track_spectrogram_image(track_id: str, file_path: Path) -> None:
+    if not track_id:
+        return
+
+    spectrogram_subdir = Path("./spectrograms") / track_id[0]
+    spectrogram_subdir.mkdir(parents=True, exist_ok=True)
+    output_path = spectrogram_subdir / f"{track_id}.png"
+    if output_path.exists():
+        return
+
+    samples = _read_audio_mono_f32(file_path, SPECTROGRAM_SAMPLE_RATE)
+    max_samples = SPECTROGRAM_SAMPLE_RATE * SPECTROGRAM_MAX_DURATION_SECONDS
+    if samples.size > max_samples:
+        samples = samples[:max_samples]
+    elif samples.size < max_samples:
+        samples = np.pad(samples, (0, max_samples - samples.size))
+
+    figure = plt.figure(
+        figsize=(
+            SPECTROGRAM_OUTPUT_WIDTH_PX / SPECTROGRAM_DPI,
+            SPECTROGRAM_OUTPUT_HEIGHT_PX / SPECTROGRAM_DPI,
+        ),
+        dpi=SPECTROGRAM_DPI,
+        frameon=False,
+    )
+    ax = figure.add_axes([0, 0, 1, 1])
+    with np.errstate(divide="ignore"):
+        ax.specgram(
+            samples,
+            NFFT=2048,
+            Fs=SPECTROGRAM_SAMPLE_RATE,
+            noverlap=1536,
+            cmap="magma",
+        )
+    ax.set_xlim(0, SPECTROGRAM_MAX_DURATION_SECONDS)
+    ax.set_axis_off()
+    figure.savefig(output_path, dpi=SPECTROGRAM_DPI, pad_inches=0)
+    plt.close(figure)
 
 
 def run_scan(music_dir: Path) -> dict[str, object]:
@@ -199,6 +278,11 @@ def run_scan(music_dir: Path) -> dict[str, object]:
             export_track_cover_image(track_id, canonical_file.filepath_resolved)
         except Exception:
             # Cover extraction should not break the scan pipeline.
+            pass
+        try:
+            export_track_spectrogram_image(track_id, canonical_file.filepath_resolved)
+        except Exception:
+            # Spectrogram generation should not break the scan pipeline.
             pass
         scanned_tracks.append(
             {

@@ -141,6 +141,27 @@ def create_app() -> Flask:
 
         return send_file(image_path)
 
+    @app.get("/api/tracks/<track_id>/spectrogram")
+    def track_spectrogram(track_id: str):
+        normalized_track_id = track_id.strip()
+        if not normalized_track_id:
+            return jsonify({"error": "Track ID is missing."}), 400
+
+        app_root = Path(".").resolve()
+        spectrograms_root = (app_root / "spectrograms").resolve()
+        spectrogram_path = (
+            spectrograms_root
+            / normalized_track_id[0]
+            / f"{normalized_track_id}.png"
+        ).resolve()
+
+        if not spectrogram_path.is_relative_to(spectrograms_root):
+            return jsonify({"error": "Track spectrogram path is outside spectrograms root."}), 400
+        if not spectrogram_path.is_file():
+            return jsonify({"error": "Track spectrogram not found."}), 404
+
+        return send_file(spectrogram_path)
+
     @app.post("/api/tracks/<track_id>/remote-data")
     def fetch_track_remote_data(track_id: str):
         details = get_track_details(track_id)

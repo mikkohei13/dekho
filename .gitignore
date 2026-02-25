@@ -3,6 +3,7 @@
 **/music_duplicates/**
 **/database_backups/**
 **/images/**
+**/spectrograms/**
 *.sqlite3
 
 temp*.html

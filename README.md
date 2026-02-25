@@ -17,7 +17,7 @@ To run the app, use:
 uv run flask --app dekho run --reload
 ```
 
-The app is available at http://127.0.0.1:5001
+The app is available at http://127.0.0.1:5000
 
 ## Architecture
 
@@ -70,8 +70,15 @@ uv run dev_db_summary.py
 
 ## Upcoming features (keep these in mind but **don't develop unless asked**)
 
+- Try tpo get more metadata from Suno, e.g. persona and version, cover boolean, cover id
+- Styling
+    - track header fix
+    - track listing styles
+    - show stars in track listing track titles
+    - liquid glass with blurred background?
+- Show description in track listing, allowing to filter by it
 - Show filters on navbar, keep all labels visible
-- Show labels in the same order as they are in the catalog
+- Show track label selection in the same order as they are in the catalog
 - Improve UI design
 - Add labels to tracks (e.g. "good", "bad")
 - Add genres to tracks
