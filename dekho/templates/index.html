@@ -40,12 +40,24 @@
     </aside>
 
     <section id="content-panel" aria-label="Details panel">
-      <p class="empty-state">Select a track to view details.</p>
+      <header id="persistent-track-header" class="panel-header" hidden>
+        <h2 id="persistent-track-title"></h2>
+        <audio id="selected-track-player" controls preload="metadata">
+          Your browser does not support audio playback.
+        </audio>
+      </header>
+      <div id="content-panel-body">
+        <p class="empty-state">Select a track to view details.</p>
+      </div>
     </section>
   </main>
   <script>
     const trackItems = document.querySelectorAll(".track-item");
     const contentPanel = document.getElementById("content-panel");
+    const contentPanelBody = document.getElementById("content-panel-body");
+    const persistentTrackHeader = document.getElementById("persistent-track-header");
+    const persistentTrackTitle = document.getElementById("persistent-track-title");
+    const selectedTrackPlayer = document.getElementById("selected-track-player");
     let activeTrackId = null;
 
     function escapeHtml(value) {
@@ -135,15 +147,43 @@
       titleElement.innerHTML = `${escapeHtml(displayTitle)}${hasRemoteTags(data.tags) ? remoteTagsIndicatorHtml() : ""}`;
     }
 
+    function updatePersistentTrackHeader(data) {
+      if (
+        !(persistentTrackHeader instanceof HTMLElement) ||
+        !(persistentTrackTitle instanceof HTMLElement) ||
+        !(selectedTrackPlayer instanceof HTMLAudioElement)
+      ) {
+        return;
+      }
+
+      const trackId = data.track_id ?? "";
+      if (!trackId) {
+        persistentTrackHeader.hidden = true;
+        selectedTrackPlayer.removeAttribute("src");
+        selectedTrackPlayer.load();
+        return;
+      }
+
+      const displayTitle = getDisplayTitle(data) || "Untitled Track";
+      const tags = data.tags ?? "";
+      const nextSrc = `/api/tracks/${encodeURIComponent(trackId)}/audio`;
+      const currentSrc = selectedTrackPlayer.getAttribute("src") || "";
+
+      persistentTrackHeader.hidden = false;
+      persistentTrackTitle.innerHTML = `${escapeHtml(displayTitle)}${hasRemoteTags(tags) ? remoteTagsIndicatorHtml() : ""}`;
+
+      // Keep playback uninterrupted when form save rerenders the details for same track.
+      if (currentSrc !== nextSrc) {
+        selectedTrackPlayer.setAttribute("src", nextSrc);
+        selectedTrackPlayer.load();
+      }
+    }
+
     function renderDetails(data) {
       const title = data.title ?? "";
       const titleNew = data.title_new ?? "";
       const notes = data.notes ?? "";
-      const displayTitle = titleNew || title || "Untitled Track";
       const trackId = data.track_id ?? "";
-      const audioSrc = trackId
-        ? `/api/tracks/${encodeURIComponent(trackId)}/audio`
-        : "";
       const url = data.url ?? "";
       const filepath = data.filepath ?? "";
       const duration = data.duration ?? "";
@@ -154,14 +194,12 @@
       const labels = Array.isArray(data.labels) ? data.labels : [];
       const labelCatalog = Array.isArray(data.label_catalog) ? data.label_catalog : [];
 
-      contentPanel.innerHTML = `
+      if (!(contentPanelBody instanceof HTMLElement)) {
+        return;
+      }
+
+      contentPanelBody.innerHTML = `
         <section id="track-info" aria-label="Track information">
-          <header class="panel-header">
-            <h2>${escapeHtml(displayTitle)}${hasRemoteTags(tags) ? remoteTagsIndicatorHtml() : ""}</h2>
-            <audio id="selected-track-player" controls preload="metadata" src="${escapeHtml(audioSrc)}">
-              Your browser does not support audio playback.
-            </audio>
-          </header>
           <div class="track-form">
             <form id="track-user-data-form">
               <label for="title-new-input">title_new</label>
@@ -208,7 +246,9 @@
       trackItems.forEach((trackItem) => trackItem.classList.remove("is-active"));
       item.classList.add("is-active");
       activeTrackId = trackId;
-      contentPanel.innerHTML = '<p class="empty-state">Loading track details...</p>';
+      if (contentPanelBody instanceof HTMLElement) {
+        contentPanelBody.innerHTML = '<p class="empty-state">Loading track details...</p>';
+      }
 
       try {
         const response = await fetch(`/api/tracks/${encodeURIComponent(trackId)}`);
@@ -217,9 +257,12 @@
         }
         const data = await response.json();
         updateTrackListTitle(trackId, data);
+        updatePersistentTrackHeader(data);
         renderDetails(data);
       } catch (error) {
-        contentPanel.innerHTML = `<p class="empty-state">${escapeHtml(error.message || "Unable to load track details.")}</p>`;
+        if (contentPanelBody instanceof HTMLElement) {
+          contentPanelBody.innerHTML = `<p class="empty-state">${escapeHtml(error.message || "Unable to load track details.")}</p>`;
+        }
       }
     }
 
@@ -243,6 +286,7 @@
           throw new Error(payload.error || "Failed to fetch data from Suno.");
         }
         updateTrackListTitle(trackId, payload);
+        updatePersistentTrackHeader(payload);
         renderDetails(payload);
       } catch (fetchError) {
         error.textContent = fetchError.message || "Failed to fetch data from Suno.";
@@ -260,7 +304,9 @@
       const error = document.getElementById("track-user-data-error");
       const titleInput = document.getElementById("title-new-input");
       const notesInput = document.getElementById("notes-input");
-      const selectedLabelInputs = contentPanel.querySelectorAll(".track-label-input:checked");
+      const selectedLabelInputs = contentPanelBody
+        ? contentPanelBody.querySelectorAll(".track-label-input:checked")
+        : [];
       if (
         !button ||
         !error ||
@@ -303,6 +349,7 @@
           throw new Error(payload.error || "Failed to save track data.");
         }
         updateTrackListTitle(trackId, payload);
+        updatePersistentTrackHeader(payload);
         renderDetails(payload);
       } catch (saveError) {
         error.textContent = saveError.message || "Failed to save track data.";
