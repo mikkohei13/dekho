@@ -33,7 +33,7 @@ def create_app() -> Flask:
             return ("\n".join(lines), 500, {"Content-Type": "text/plain; charset=utf-8"})
 
         music_root = Path("./music").resolve()
-        tracks_in_music: list[dict[str, str]] = []
+        tracks_in_music: list[dict[str, object]] = []
 
         for row in get_all_tracks_file_data():
             track_id = str(row["track_id"]) if row["track_id"] else ""
@@ -41,6 +41,7 @@ def create_app() -> Flask:
             title = str(row["title"]) if row["title"] else ""
             title_new = str(row["title_new"]) if row["title_new"] else ""
             tags = str(row["tags"]) if row["tags"] else ""
+            labels = row["labels"] if isinstance(row.get("labels"), list) else []
             if not track_id or not filepath:
                 continue
 
@@ -58,6 +59,9 @@ def create_app() -> Flask:
                     "track_id": track_id,
                     "filepath": relative_path.as_posix(),
                     "display_title": title_new or title or "Unknown",
+                    "title": title or "",
+                    "tags": tags,
+                    "labels": labels,
                     "has_remote_tags": bool(tags.strip()),
                 }
             )

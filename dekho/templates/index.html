@@ -7,18 +7,21 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='styles/index.css') }}">
 </head>
 <body>
-  <nav id="top-nav" aria-label="Primary">
+  <nav id="top-nav">
     <div class="brand">Dekho</div>
     <a class="scan-link" href="/scan">Scan music folder</a>
   </nav>
 
   <main id="app-shell">
-    <aside id="tracks-panel" aria-labelledby="tracks-heading">
+    <aside id="tracks-panel">
       <header class="panel-header">
-        <h1 id="tracks-heading">Music Tracks</h1>
+        <div class="tracks-filter">
+          <input id="tracks-filter-input" type="text" placeholder="Filter tracks...">
+          <span id="tracks-filter-count"></span>
+        </div>
       </header>
 
-      <section id="tracks-list" aria-label="Track list">
+      <section id="tracks-list">
         {% if tracks %}
           <ul class="track-items">
             {% for track in tracks %}
@@ -26,10 +29,25 @@
                 <h2 class="track-title">
                   {{ track.display_title }}
                   {% if track.has_remote_tags %}
-                    <span class="remote-tags-indicator" aria-label="Remote metadata available" title="Remote metadata fetched from Suno">✦</span>
+                    <span class="remote-tags-indicator">✦</span>
                   {% endif %}
                 </h2>
                 <p class="track-id">{{ track.track_id }}</p>
+                <div class="track-meta-block">
+                  <p class="track-meta" id="track-meta-title">
+                    {{ track.title or "-" }}
+                  </p>
+                  {% if track.tags %}
+                    <p class="track-meta" id="track-meta-tags">
+                      {{ track.tags }}
+                    </p>
+                  {% endif %}
+                  {% if track.labels %}
+                    <p class="track-meta" id="track-meta-labels">
+                      {{ track.labels | join(", ") }}
+                    </p>
+                  {% endif %}
+                </div>
               </li>
             {% endfor %}
           </ul>
@@ -39,7 +57,7 @@
       </section>
     </aside>
 
-    <section id="content-panel" aria-label="Details panel">
+    <section id="content-panel">
       <header id="persistent-track-header" class="panel-header" hidden>
         <h2 id="persistent-track-title"></h2>
         <audio id="selected-track-player" controls preload="metadata">
@@ -52,7 +70,9 @@
     </section>
   </main>
   <script>
-    const trackItems = document.querySelectorAll(".track-item");
+    const trackItems = Array.from(document.querySelectorAll(".track-item"));
+    const tracksFilterInput = document.getElementById("tracks-filter-input");
+    const tracksFilterCount = document.getElementById("tracks-filter-count");
     const contentPanel = document.getElementById("content-panel");
     const contentPanelBody = document.getElementById("content-panel-body");
     const persistentTrackHeader = document.getElementById("persistent-track-header");
@@ -75,7 +95,27 @@
     }
 
     function remoteTagsIndicatorHtml() {
-      return '<span class="remote-tags-indicator" aria-label="Remote metadata available" title="Remote metadata fetched from Suno">✦</span>';
+      return '<span class="remote-tags-indicator">✦</span>';
+    }
+
+    function updateTracksFilterCount() {
+      if (!(tracksFilterCount instanceof HTMLElement)) {
+        return;
+      }
+      const total = trackItems.length;
+      const matched = trackItems.filter((item) => !item.hidden).length;
+      tracksFilterCount.textContent = `${matched}/${total} tracks`;
+    }
+
+    function applyTracksFilter() {
+      const query = String(tracksFilterInput instanceof HTMLInputElement ? tracksFilterInput.value : "")
+        .trim()
+        .toLocaleLowerCase();
+      trackItems.forEach((item) => {
+        const haystack = (item.textContent || "").toLocaleLowerCase();
+        item.hidden = query ? !haystack.includes(query) : false;
+      });
+      updateTracksFilterCount();
     }
 
     function domSafeValue(value) {
@@ -145,6 +185,7 @@
       }
       const displayTitle = getDisplayTitle(data);
       titleElement.innerHTML = `${escapeHtml(displayTitle)}${hasRemoteTags(data.tags) ? remoteTagsIndicatorHtml() : ""}`;
+      applyTracksFilter();
     }
 
     function updatePersistentTrackHeader(data) {
@@ -199,7 +240,7 @@
       }
 
       contentPanelBody.innerHTML = `
-        <section id="track-info" aria-label="Track information">
+        <section id="track-info">
           <div class="track-form">
             <form id="track-user-data-form">
               <label for="title-new-input">title_new</label>
@@ -214,7 +255,7 @@
               </div>
               <div class="track-user-data-actions">
                 <button id="save-track-user-data-btn" type="button">Save</button>
-                <span id="track-user-data-error" class="track-user-data-error" aria-live="polite"></span>
+                <span id="track-user-data-error" class="track-user-data-error"></span>
               </div>
             </form>
           </div>
@@ -229,7 +270,7 @@
           <div class="track-moredetails">
             <div class="remote-actions">
               <button id="get-remote-data-btn" type="button">Get data from Suno</button>
-              <span id="remote-data-error" class="remote-data-error" aria-live="polite"></span>
+              <span id="remote-data-error" class="remote-data-error"></span>
             </div>
             <h4>Tags</h4>
             <div id="track-info-tags">${escapeHtml(tags || "-")}</div>
@@ -376,6 +417,11 @@
         }
       });
     });
+
+    if (tracksFilterInput instanceof HTMLInputElement) {
+      tracksFilterInput.addEventListener("input", applyTracksFilter);
+    }
+    applyTracksFilter();
 
     contentPanel.addEventListener("click", (event) => {
       const target = event.target;

@@ -93,6 +93,34 @@ body {
   letter-spacing: 0.01em;
 }
 
+.tracks-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.55rem;
+}
+
+#tracks-filter-input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.4rem 0.55rem;
+  color: var(--text);
+  background: rgba(12, 16, 24, 0.65);
+}
+
+#tracks-filter-input:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+}
+
+#tracks-filter-count {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
 #selected-track-player {
   display: block;
   width: 100%;
@@ -162,6 +190,25 @@ body {
   color: var(--text-muted);
   font-size: 0.95rem;
   overflow-wrap: anywhere;
+}
+
+.track-meta-block {
+  margin-top: 0.35rem;
+}
+
+.track-meta {
+  margin: 0.2rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  overflow-wrap: anywhere;
+}
+
+.track-meta-title {
+  margin-top: 0.3rem;
+}
+
+.track-meta {
+  color: rgba(217, 225, 242, 0.95);
 }
 
 .empty-state {

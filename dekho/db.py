@@ -154,7 +154,7 @@ def upsert_track(
         )
 
 
-def get_all_tracks_file_data() -> list[dict[str, str | None]]:
+def get_all_tracks_file_data() -> list[dict[str, object]]:
     init_db()
     with get_connection() as connection:
         rows = connection.execute(
@@ -165,6 +165,20 @@ def get_all_tracks_file_data() -> list[dict[str, str | None]]:
             LEFT JOIN track_remote_data AS trd ON trd.track_id = tfd.track_id
             """
         ).fetchall()
+        label_rows = connection.execute(
+            """
+            SELECT tul.track_id, ld.label
+            FROM track_user_data_labels AS tul
+            JOIN label_definitions AS ld ON ld.id = tul.label_id
+            ORDER BY ld.category, ld.label
+            """
+        ).fetchall()
+
+    labels_by_track_id: dict[str, list[str]] = {}
+    for label_row in label_rows:
+        track_id = str(label_row[0])
+        label = str(label_row[1])
+        labels_by_track_id.setdefault(track_id, []).append(label)
 
     return [
         {
@@ -173,6 +187,7 @@ def get_all_tracks_file_data() -> list[dict[str, str | None]]:
             "title": row[2],
             "title_new": row[3],
             "tags": row[4],
+            "labels": labels_by_track_id.get(str(row[0]), []),
         }
         for row in rows
     ]
