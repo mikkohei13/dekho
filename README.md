@@ -34,6 +34,34 @@ Use this command to get more information about the database:
 uv run dev_db_summary.py
 ```
 
+- label_definitions
+  • id (INTEGER, NULL PK)
+  • key (TEXT, NOT NULL)
+  • category (TEXT, NOT NULL)
+  • label (TEXT, NOT NULL)
+
+- track_remote_data
+  • track_id (TEXT, NULL PK)
+  • prompt (TEXT, NULL)
+  • tags (TEXT, NULL)
+  • negative_tags (TEXT, NULL)
+  • has_cover_clip_id (INTEGER, NOT NULL)
+  • major_model_version (TEXT, NULL)
+  • model_name (TEXT, NULL)
+  • persona_name (TEXT, NULL)
+  • FKs: track_id -> tracks_file_data.track_id
+
+- track_user_data
+  • track_id (TEXT, NULL PK)
+  • notes (TEXT, NULL)
+  • title_new (TEXT, NULL)
+  • FKs: track_id -> tracks_file_data.track_id
+
+- track_user_data_labels
+  • track_id (TEXT, NOT NULL PK)
+  • label_id (INTEGER, NOT NULL PK)
+  • FKs: label_id -> label_definitions.id, track_id -> track_user_data.track_id
+
 - tracks_file_data
   • track_id (TEXT, NULL PK)
   • filepath (TEXT, NULL)
@@ -44,34 +72,8 @@ uv run dev_db_summary.py
   • date_created (TEXT, NULL)
   • date_added (TEXT, NULL)
 
-- track_remote_data
-  • track_id (TEXT, NULL PK)
-  • prompt (TEXT, NULL)
-  • tags (TEXT, NULL)
-  • negative_tags (TEXT, NULL)
-  • FKs: track_id -> tracks_file_data.track_id
-
-- track_user_data
-  • track_id (TEXT, NULL PK)
-  • notes (TEXT, NULL)
-  • title_new (TEXT, NULL)
-  • FKs: track_id -> tracks_file_data.track_id
-
-- label_definitions
-  • id (INTEGER, NULL PK)
-  • key (TEXT, NOT NULL)
-  • category (TEXT, NOT NULL)
-  • label (TEXT, NOT NULL)
-
-- track_user_data_labels
-  • track_id (TEXT, NOT NULL PK)
-  • label_id (INTEGER, NOT NULL PK)
-  • FKs: label_id -> label_definitions.id, track_id -> track_user_data.track_id
-
 ## Upcoming features (keep these in mind but **don't develop unless asked**)
 
-- Add label like0 = set as not liked
-- Try tpo get more metadata from Suno, e.g. persona and version, cover boolean, cover id
 - Styling
     - track header fix
     - track listing styles
@@ -80,9 +82,6 @@ uv run dev_db_summary.py
 - Show description in track listing, allowing to filter by it
 - Show filters on navbar, keep all labels visible
 - Show track label selection in the same order as they are in the catalog
-- Improve UI design
-- Add labels to tracks (e.g. "good", "bad")
-- Add genres to tracks
 - Add player that keeps always open on the bottom
 
 ## Development principles
