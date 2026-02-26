@@ -54,6 +54,7 @@ body {
   flex: 1;
   min-height: 0;
   padding: 1.1rem;
+  padding-bottom: 8.2rem;
 }
 
 #tracks-panel,
@@ -84,6 +85,57 @@ body {
   z-index: 1;
   background: linear-gradient(180deg, var(--surface), var(--surface-alt));
   padding-bottom: 0.65rem;
+}
+
+#persistent-track-header {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.7rem 1.1rem 0.85rem;
+  border-top: 1px solid var(--border);
+  background: rgba(15, 17, 22, 0.94);
+  backdrop-filter: blur(8px);
+}
+
+#persistent-track-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.persistent-track-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+#show-playing-track-btn {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.28rem 0.52rem;
+  color: var(--text);
+  background: rgba(12, 16, 24, 0.65);
+  cursor: pointer;
+  font-size: 0.84rem;
+  line-height: 1.15;
+  flex-shrink: 0;
+}
+
+#show-playing-track-btn:hover,
+#show-playing-track-btn:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+}
+
+#show-playing-track-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .panel-header h1,
@@ -243,7 +295,7 @@ body {
 #selected-track-player {
   display: block;
   width: 100%;
-  margin-top: 0.65rem;
+  margin-top: 0;
 }
 
 #tracks-list {
@@ -400,6 +452,35 @@ body {
 
 #track-info > .panel-header {
   grid-area: header;
+}
+
+.track-info-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.track-info-header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  overflow-wrap: anywhere;
+}
+
+#play-current-track-btn {
+  border: 1px solid var(--accent-soft);
+  border-radius: 10px;
+  padding: 0.45rem 0.75rem;
+  color: var(--text);
+  background: rgba(121, 168, 255, 0.18);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+#play-current-track-btn:hover,
+#play-current-track-btn:focus-visible {
+  outline: none;
+  filter: brightness(1.06);
 }
 
 #track-info > .remote-actions {
@@ -601,6 +682,7 @@ code {
 @media (max-width: 900px) {
   #app-shell {
     grid-template-columns: 1fr;
+    padding-bottom: 8.6rem;
   }
 
   .tracks-label-filter-popover {

@@ -17,6 +17,7 @@ LABEL_CATALOG: tuple[dict[str, str | tuple[dict[str, str], ...]], ...] = (
         "category": "like",
         "display_name": "like",
         "labels": (
+            {"key": "like.like0", "label": "like0"},
             {"key": "like.like1", "label": "like1"},
             {"key": "like.like2", "label": "like2"},
             {"key": "like.like3", "label": "like3"},

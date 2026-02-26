@@ -74,6 +74,7 @@ uv run dev_db_summary.py
 
 ## Upcoming features (keep these in mind but **don't develop unless asked**)
 
+- Show player only when a track is selected
 - Styling
     - track header fix
     - track listing styles
@@ -82,7 +83,7 @@ uv run dev_db_summary.py
 - Show description in track listing, allowing to filter by it
 - Show filters on navbar, keep all labels visible
 - Show track label selection in the same order as they are in the catalog
-- Add player that keeps always open on the bottom
+- Refactor, e.g. javascript in a separate fale, maybe several files
 
 ## Development principles
 

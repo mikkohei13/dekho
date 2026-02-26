@@ -84,17 +84,20 @@
     </aside>
 
     <section id="content-panel">
-      <header id="persistent-track-header" class="panel-header" hidden>
-        <h2 id="persistent-track-title"></h2>
-        <audio id="selected-track-player" controls preload="metadata">
-          Your browser does not support audio playback.
-        </audio>
-      </header>
       <div id="content-panel-body">
         <p class="empty-state">Select a track to view details.</p>
       </div>
     </section>
   </main>
+  <header id="persistent-track-header" class="panel-header" hidden>
+    <div class="persistent-track-title-row">
+      <h2 id="persistent-track-title"></h2>
+      <button id="show-playing-track-btn" type="button">Show</button>
+    </div>
+    <audio id="selected-track-player" controls preload="metadata">
+      Your browser does not support audio playback.
+    </audio>
+  </header>
   <script id="tracks-label-catalog-data" type="application/json">{{ label_catalog | default([], true) | tojson }}</script>
   <script>
     const tracksLabelCatalogElement = document.getElementById("tracks-label-catalog-data");
@@ -122,9 +125,11 @@
     const persistentTrackHeader = document.getElementById("persistent-track-header");
     const persistentTrackTitle = document.getElementById("persistent-track-title");
     const selectedTrackPlayer = document.getElementById("selected-track-player");
+    const showPlayingTrackButton = document.getElementById("show-playing-track-btn");
     const selectedTrackFilterLabelKeys = new Set();
     const trackLabelByKey = new Map();
     let activeTrackId = null;
+    let activeTrackData = null;
     let hasUnsavedUserDataChanges = false;
 
     if (Array.isArray(tracksLabelCatalog)) {
@@ -411,24 +416,67 @@
       const trackId = data.track_id ?? "";
       if (!trackId) {
         persistentTrackHeader.hidden = true;
+        if (showPlayingTrackButton instanceof HTMLButtonElement) {
+          showPlayingTrackButton.disabled = true;
+        }
+        delete selectedTrackPlayer.dataset.trackId;
         selectedTrackPlayer.removeAttribute("src");
         selectedTrackPlayer.load();
         return;
       }
 
       const displayTitle = getDisplayTitle(data) || "Untitled Track";
-      const tags = data.tags ?? "";
       const nextSrc = `/api/tracks/${encodeURIComponent(trackId)}/audio`;
       const currentSrc = selectedTrackPlayer.getAttribute("src") || "";
 
       persistentTrackHeader.hidden = false;
-      persistentTrackTitle.innerHTML = `${escapeHtml(displayTitle)}${hasRemoteTags(tags) ? remoteTagsIndicatorHtml() : ""}`;
+      selectedTrackPlayer.dataset.trackId = trackId;
+      if (showPlayingTrackButton instanceof HTMLButtonElement) {
+        showPlayingTrackButton.disabled = false;
+      }
+      persistentTrackTitle.textContent = displayTitle;
 
       // Keep playback uninterrupted when form save rerenders the details for same track.
       if (currentSrc !== nextSrc) {
         selectedTrackPlayer.setAttribute("src", nextSrc);
         selectedTrackPlayer.load();
       }
+    }
+
+    function updatePersistentTrackTitleIfPlaying(data) {
+      if (
+        !(persistentTrackTitle instanceof HTMLElement) ||
+        !(selectedTrackPlayer instanceof HTMLAudioElement)
+      ) {
+        return;
+      }
+      const trackId = data.track_id ?? "";
+      const playingTrackId = selectedTrackPlayer.dataset.trackId ?? "";
+      if (!trackId || playingTrackId !== trackId) {
+        return;
+      }
+      const displayTitle = getDisplayTitle(data) || "Untitled Track";
+      persistentTrackTitle.textContent = displayTitle;
+    }
+
+    function showPlayingTrackInContentPanel() {
+      const trackId = selectedTrackPlayer instanceof HTMLAudioElement
+        ? (selectedTrackPlayer.dataset.trackId ?? "")
+        : "";
+      if (!trackId) {
+        return;
+      }
+      const trackItem = document.querySelector(`.track-item[data-track-id="${CSS.escape(trackId)}"]`);
+      if (!(trackItem instanceof HTMLElement)) {
+        return;
+      }
+      if (hasUnsavedUserDataChanges && activeTrackId && activeTrackId !== trackId) {
+        const shouldContinue = window.confirm("You have unsaved changes. Leave this track without saving?");
+        if (!shouldContinue) {
+          return;
+        }
+      }
+      loadTrackDetails(trackId, trackItem);
     }
 
     function setTrackUserDataSaveStatus(statusText) {
@@ -467,6 +515,7 @@
       const prompt = data.prompt ?? "";
       const labels = Array.isArray(data.labels) ? data.labels : [];
       const labelCatalog = Array.isArray(data.label_catalog) ? data.label_catalog : [];
+      const displayTitle = getDisplayTitle(data) || "Untitled Track";
 
       if (!(contentPanelBody instanceof HTMLElement)) {
         return;
@@ -474,6 +523,12 @@
 
       contentPanelBody.innerHTML = `
         <section id="track-info">
+          <header class="panel-header track-info-header">
+            <h2>
+              ${escapeHtml(displayTitle)}${hasRemoteTags(tags) ? remoteTagsIndicatorHtml() : ""}
+            </h2>
+            <button id="play-current-track-btn" type="button">Play</button>
+          </header>
           <div class="track-form">
             <form id="track-user-data-form">
               <label for="title-new-input">title_new</label>
@@ -535,6 +590,7 @@
           </div>
         </section>
       `;
+      activeTrackData = data;
       markTrackUserDataSaved();
     }
 
@@ -542,6 +598,7 @@
       trackItems.forEach((trackItem) => trackItem.classList.remove("is-active"));
       item.classList.add("is-active");
       activeTrackId = trackId;
+      activeTrackData = null;
       if (contentPanelBody instanceof HTMLElement) {
         contentPanelBody.innerHTML = '<p class="empty-state">Loading track details...</p>';
       }
@@ -554,7 +611,6 @@
         const data = await response.json();
         updateTrackListTitle(trackId, data);
         updateTrackItemLabels(trackId, data.labels);
-        updatePersistentTrackHeader(data);
         renderDetails(data);
       } catch (error) {
         if (contentPanelBody instanceof HTMLElement) {
@@ -584,7 +640,7 @@
         }
         updateTrackListTitle(trackId, payload);
         updateTrackItemLabels(trackId, payload.labels);
-        updatePersistentTrackHeader(payload);
+        updatePersistentTrackTitleIfPlaying(payload);
         renderDetails(payload);
       } catch (fetchError) {
         error.textContent = fetchError.message || "Failed to fetch data from Suno.";
@@ -648,7 +704,7 @@
         }
         updateTrackListTitle(trackId, payload);
         updateTrackItemLabels(trackId, payload.labels);
-        updatePersistentTrackHeader(payload);
+        updatePersistentTrackTitleIfPlaying(payload);
         renderDetails(payload);
       } catch (saveError) {
         error.textContent = saveError.message || "Failed to save track data.";
@@ -733,6 +789,10 @@
     }
     renderTrackLabelFilterOptions();
     applyTracksFilter();
+    if (showPlayingTrackButton instanceof HTMLButtonElement) {
+      showPlayingTrackButton.disabled = true;
+      showPlayingTrackButton.addEventListener("click", showPlayingTrackInContentPanel);
+    }
 
     contentPanel.addEventListener("click", (event) => {
       const target = event.target;
@@ -750,6 +810,13 @@
       }
       if (target.id === "save-track-user-data-btn" && activeTrackId) {
         saveUserData(activeTrackId);
+      }
+      if (target.id === "play-current-track-btn" && activeTrackData) {
+        updatePersistentTrackHeader(activeTrackData);
+        const playAttempt = selectedTrackPlayer.play();
+        if (playAttempt && typeof playAttempt.catch === "function") {
+          playAttempt.catch(() => {});
+        }
       }
     });
 
