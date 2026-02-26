@@ -460,6 +460,10 @@
       const dateCreated = data.date_created ?? "";
       const tags = data.tags ?? "";
       const negativeTags = data.negative_tags ?? "";
+      const hasCoverClipId = Boolean(data.has_cover_clip_id);
+      const majorModelVersion = data.major_model_version ?? "";
+      const modelName = data.model_name ?? "";
+      const personaName = data.persona_name ?? "";
       const prompt = data.prompt ?? "";
       const labels = Array.isArray(data.labels) ? data.labels : [];
       const labelCatalog = Array.isArray(data.label_catalog) ? data.label_catalog : [];
@@ -518,6 +522,14 @@
             <div id="track-info-tags">${escapeHtml(tags || "-")}</div>
             <h4>Negative Tags</h4>
             <div id="track-info-negative-tags">${escapeHtml(negativeTags || "-")}</div>
+            <h4>Has Cover Clip ID</h4>
+            <div id="track-info-has-cover-clip-id">${hasCoverClipId ? "True" : "False"}</div>
+            <h4>Major Model Version</h4>
+            <div id="track-info-major-model-version">${escapeHtml(majorModelVersion || "-")}</div>
+            <h4>Model Name</h4>
+            <div id="track-info-model-name">${escapeHtml(modelName || "-")}</div>
+            <h4>Persona Name</h4>
+            <div id="track-info-persona-name">${escapeHtml(personaName || "-")}</div>
             <h4>Lyrics Prompt</h4>
             <div id="track-info-prompt">${escapeHtml(prompt || "-")}</div>
           </div>

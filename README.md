@@ -70,6 +70,7 @@ uv run dev_db_summary.py
 
 ## Upcoming features (keep these in mind but **don't develop unless asked**)
 
+- Add label like0 = set as not liked
 - Try tpo get more metadata from Suno, e.g. persona and version, cover boolean, cover id
 - Styling
     - track header fix

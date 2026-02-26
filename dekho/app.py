@@ -184,6 +184,10 @@ def create_app() -> Flask:
             prompt=remote_data.get("prompt"),
             tags=remote_data.get("tags"),
             negative_tags=remote_data.get("negative_tags"),
+            has_cover_clip_id=bool(remote_data.get("has_cover_clip_id")),
+            major_model_version=remote_data.get("major_model_version"),
+            model_name=remote_data.get("model_name"),
+            persona_name=remote_data.get("persona_name"),
         )
 
         updated_details = get_track_details(track_id)

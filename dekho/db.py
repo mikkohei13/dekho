@@ -36,6 +36,10 @@ def init_db() -> None:
                 prompt TEXT,
                 tags TEXT,
                 negative_tags TEXT,
+                has_cover_clip_id INTEGER NOT NULL DEFAULT 0,
+                major_model_version TEXT,
+                model_name TEXT,
+                persona_name TEXT,
                 FOREIGN KEY (track_id) REFERENCES tracks_file_data(track_id)
             )
             """
@@ -50,11 +54,6 @@ def init_db() -> None:
             )
             """
         )
-        if _label_definitions_missing_key_column(connection):
-            # No backward compatibility requested: recreate label tables
-            # with key-based schema and drop old assignments.
-            connection.execute("DROP TABLE IF EXISTS track_user_data_labels")
-            connection.execute("DROP TABLE IF EXISTS label_definitions")
         connection.execute(
             """
             CREATE TABLE IF NOT EXISTS label_definitions (
@@ -106,21 +105,6 @@ def _get_label_ids_for_keys(connection: sqlite3.Connection) -> dict[str, int]:
         """
     ).fetchall()
     return {str(row[1]): int(row[0]) for row in rows}
-
-
-def _label_definitions_missing_key_column(connection: sqlite3.Connection) -> bool:
-    rows = connection.execute(
-        """
-        SELECT name
-        FROM sqlite_master
-        WHERE type = 'table' AND name = 'label_definitions'
-        """
-    ).fetchall()
-    if not rows:
-        return False
-    table_info = connection.execute("PRAGMA table_info(label_definitions)").fetchall()
-    column_names = {str(row[1]) for row in table_info}
-    return "key" not in column_names
 
 
 def upsert_track(
@@ -213,6 +197,10 @@ def get_track_details(track_id: str) -> dict[str, object] | None:
                 trd.prompt,
                 trd.tags,
                 trd.negative_tags,
+                trd.has_cover_clip_id,
+                trd.major_model_version,
+                trd.model_name,
+                trd.persona_name,
                 tud.title_new,
                 tud.notes
             FROM tracks_file_data AS tfd
@@ -236,19 +224,31 @@ def get_track_details(track_id: str) -> dict[str, object] | None:
         "prompt": row[6],
         "tags": row[7],
         "negative_tags": row[8],
-        "title_new": row[9],
-        "notes": row[10],
+        "has_cover_clip_id": bool(row[9]),
+        "major_model_version": row[10],
+        "model_name": row[11],
+        "persona_name": row[12],
+        "title_new": row[13],
+        "notes": row[14],
         "labels": get_track_label_keys(track_id),
         "label_catalog": get_label_catalog(),
     }
 
 
-def get_track_remote_data(track_id: str) -> dict[str, str | None] | None:
+def get_track_remote_data(track_id: str) -> dict[str, str | bool | None] | None:
     init_db()
     with get_connection() as connection:
         row = connection.execute(
             """
-            SELECT track_id, prompt, tags, negative_tags
+            SELECT
+                track_id,
+                prompt,
+                tags,
+                negative_tags,
+                has_cover_clip_id,
+                major_model_version,
+                model_name,
+                persona_name
             FROM track_remote_data
             WHERE track_id = ?
             """,
@@ -263,6 +263,10 @@ def get_track_remote_data(track_id: str) -> dict[str, str | None] | None:
         "prompt": row[1],
         "tags": row[2],
         "negative_tags": row[3],
+        "has_cover_clip_id": bool(row[4]),
+        "major_model_version": row[5],
+        "model_name": row[6],
+        "persona_name": row[7],
     }
 
 
@@ -271,19 +275,45 @@ def upsert_track_remote_data(
     prompt: str | None,
     tags: str | None,
     negative_tags: str | None,
+    has_cover_clip_id: bool | None,
+    major_model_version: str | None,
+    model_name: str | None,
+    persona_name: str | None,
 ) -> None:
     init_db()
     with get_connection() as connection:
         connection.execute(
             """
-            INSERT INTO track_remote_data (track_id, prompt, tags, negative_tags)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO track_remote_data (
+                track_id,
+                prompt,
+                tags,
+                negative_tags,
+                has_cover_clip_id,
+                major_model_version,
+                model_name,
+                persona_name
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(track_id) DO UPDATE SET
                 prompt = excluded.prompt,
                 tags = excluded.tags,
-                negative_tags = excluded.negative_tags
+                negative_tags = excluded.negative_tags,
+                has_cover_clip_id = excluded.has_cover_clip_id,
+                major_model_version = excluded.major_model_version,
+                model_name = excluded.model_name,
+                persona_name = excluded.persona_name
             """,
-            (track_id, prompt, tags, negative_tags),
+            (
+                track_id,
+                prompt,
+                tags,
+                negative_tags,
+                1 if has_cover_clip_id else 0,
+                major_model_version,
+                model_name,
+                persona_name,
+            ),
         )
 
 

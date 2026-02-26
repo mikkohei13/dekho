@@ -1,8 +1,8 @@
 # Technical & architecture notes
 
-## Fetching lyrics from Suno
+## Fetching metadata from Suno
 
-Lyrics are fetched server-side from public Suno track pages by parsing Next.js Flight payloads embedded in self.__next_f.push(...) script tags.
+Metadata are fetched server-side from public Suno track pages by parsing Next.js Flight payloads embedded in self.__next_f.push(...) script tags.
 
 - Input: track URL from DB (tracks_file_data.url).
 - Fetch: raw HTML via urllib.request with a browser-like user agent.
@@ -20,7 +20,7 @@ Lyrics are fetched server-side from public Suno track pages by parsing Next.js F
 
 ### Supported cases now
 
-- Full metadata present (prompt, tags, negative_tags).
+- Full metadata present (lyrics prompt, tags, negative_tags).
 - Partial metadata (any subset of those fields).
 - Prompt as plain text directly in metadata.
 - Prompt as $<id> reference with:
