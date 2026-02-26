@@ -48,6 +48,7 @@ LABEL_CATALOG: tuple[dict[str, str | tuple[dict[str, str], ...]], ...] = (
         "labels": (
             {"key": "generation.published_on_suno", "label": "published on Suno"},
             {"key": "generation.own_cover", "label": "own cover"},
+            {"key": "generation.own_mashup", "label": "own mashup"},
             {"key": "generation.other_cover", "label": "other cover"},
             {"key": "generation.ace_cover", "label": "ace-cover"},
         ),
@@ -65,7 +66,8 @@ LABEL_CATALOG: tuple[dict[str, str | tuple[dict[str, str], ...]], ...] = (
         "labels": (
             {"key": "issue.cut_short", "label": "cut short"},
             {"key": "issue.distortion", "label": "distortion"},
-            {"key": "issue.other", "label": "other"},
+            {"key": "issue.hollow", "label": "hollow"},
+            {"key": "issue.other", "label": "other issue"},
         ),
     },
 )

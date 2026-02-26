@@ -20,6 +20,10 @@ def create_app() -> Flask:
     app = Flask(__name__)
     init_db()
 
+    @app.get("/favicon.ico")
+    def favicon():
+        return app.send_static_file("favicon.ico")
+
     @app.get("/")
     def index() -> str:
         unknown_labels = get_unknown_label_assignments()
