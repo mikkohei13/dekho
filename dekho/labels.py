@@ -17,6 +17,7 @@ LABEL_CATALOG: tuple[dict[str, str | tuple[dict[str, str], ...]], ...] = (
         "category": "like",
         "display_name": "like",
         "labels": (
+            {"key": "like.not_like", "label": "not like"},
             {"key": "like.like0", "label": "like0"},
             {"key": "like.like1", "label": "like1"},
             {"key": "like.like2", "label": "like2"},
@@ -32,6 +33,7 @@ LABEL_CATALOG: tuple[dict[str, str | tuple[dict[str, str], ...]], ...] = (
             {"key": "setting.doggerland", "label": "doggerland"},
             {"key": "setting.shadowrun", "label": "shadowrun"},
             {"key": "setting.western", "label": "western"},
+            {"key": "setting.other", "label": "other"},
         ),
     },
     {

@@ -42,9 +42,24 @@ body {
 }
 
 .brand {
-  font-size: 1.1rem;
+  font-size: 2.2rem;
   font-weight: 600;
   letter-spacing: 0.02em;
+}
+
+.brand img {
+  width: 2rem;
+  height: 2rem;
+  vertical-align: middle;
+  margin-bottom: 0.3rem;
+  margin-right: 0.3rem;
+}
+
+.brand strong {
+  background: linear-gradient(110deg, #DD0033, #ffd900, #1bb3ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 #app-shell {
@@ -467,20 +482,53 @@ body {
   overflow-wrap: anywhere;
 }
 
-#play-current-track-btn {
-  border: 1px solid var(--accent-soft);
+#play-current-track-btn,
+#get-remote-data-btn,
+#save-track-user-data-btn,
+#show-playing-track-btn,
+.scan-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  border: 1px solid rgba(147, 164, 197, 0.28);
   border-radius: 10px;
-  padding: 0.45rem 0.75rem;
+  padding: 0.48rem 0.82rem;
   color: var(--text);
-  background: rgba(121, 168, 255, 0.18);
+  background:
+    linear-gradient(
+      110deg,
+      rgba(255, 27, 141, 0.2) 40%,
+      rgba(255, 217, 0, 0.2) 70%,
+      rgba(27, 179, 255, 0.2) 100%
+    ),
+    rgba(13, 16, 22, 0.92);
+  box-shadow:
+    inset 0 0 0 1px rgba(240, 246, 255, 0.03),
+    0 0 0 1px rgba(10, 12, 18, 0.55);
   cursor: pointer;
+  transition: border-color 140ms ease, filter 140ms ease, box-shadow 140ms ease;
+}
+
+#play-current-track-btn {
   flex-shrink: 0;
 }
 
 #play-current-track-btn:hover,
-#play-current-track-btn:focus-visible {
+#play-current-track-btn:focus-visible,
+#get-remote-data-btn:hover,
+#get-remote-data-btn:focus-visible,
+#save-track-user-data-btn:hover,
+#save-track-user-data-btn:focus-visible,
+.scan-link:hover,
+.scan-link:focus-visible {
   outline: none;
-  filter: brightness(1.06);
+  border-color: rgba(182, 199, 235, 0.42);
+  filter: brightness(1.1);
+  box-shadow:
+    inset 0 0 0 1px rgba(250, 255, 255, 0.05),
+    0 0 0 1px rgba(12, 15, 22, 0.68),
+    0 0 18px rgba(28, 41, 66, 0.24);
 }
 
 #track-info > .remote-actions {
@@ -506,23 +554,8 @@ body {
   margin-top: 0.9rem;
 }
 
-#get-remote-data-btn {
-  border: 1px solid var(--accent-soft);
-  border-radius: 10px;
-  padding: 0.45rem 0.75rem;
-  color: var(--text);
-  background: rgba(121, 168, 255, 0.18);
-  cursor: pointer;
-}
-
-#get-remote-data-btn:hover,
-#get-remote-data-btn:focus-visible {
-  outline: none;
-  filter: brightness(1.06);
-}
-
 #get-remote-data-btn:disabled {
-  opacity: 0.65;
+  opacity: 0.6;
   cursor: wait;
 }
 
@@ -626,23 +659,8 @@ body {
   margin-top: 0.25rem;
 }
 
-#save-track-user-data-btn {
-  border: 1px solid var(--accent-soft);
-  border-radius: 10px;
-  padding: 0.45rem 0.75rem;
-  color: var(--text);
-  background: rgba(121, 168, 255, 0.18);
-  cursor: pointer;
-}
-
-#save-track-user-data-btn:hover,
-#save-track-user-data-btn:focus-visible {
-  outline: none;
-  filter: brightness(1.06);
-}
-
 #save-track-user-data-btn:disabled {
-  opacity: 0.65;
+  opacity: 0.6;
   cursor: wait;
 }
 
@@ -660,19 +678,8 @@ body {
 }
 
 .scan-link {
-  display: inline-block;
-  text-decoration: none;
-  color: var(--text);
-  border: 1px solid var(--accent-soft);
   border-radius: 999px;
-  padding: 0.55rem 0.95rem;
-  background: linear-gradient(90deg, rgba(121, 168, 255, 0.24), rgba(91, 236, 184, 0.2));
-}
-
-.scan-link:hover,
-.scan-link:focus-visible {
-  outline: none;
-  filter: brightness(1.07);
+  padding-inline: 0.95rem;
 }
 
 code {
