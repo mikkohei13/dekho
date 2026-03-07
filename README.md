@@ -82,7 +82,7 @@ uv run dev_db_summary.py
 
 - State with Alpine.js?
 - Disable Scan button when scanning is in progress
-- Disable pressing enter when editing track details
+- Disable pressing enter when editing track details (currently "deselects" the track and "closes" the track info section)
 - Label: make cover
 - Show player only when a track is selected
 - Styling

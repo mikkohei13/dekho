@@ -29,6 +29,7 @@ TEXT_REF_RE = re.compile(r"^([0-9A-Za-z]+):T[0-9a-fA-F]+,$")
 TEXT_REF_INLINE_RE = re.compile(r"^([0-9A-Za-z]+):T[0-9a-fA-F]+,(.+)$", re.DOTALL)
 PROMPT_REF_RE = re.compile(r"^\$([0-9A-Za-z]+)$")
 STANZA_MARKER_RE = re.compile(r"(?:\[[^\]\n]{1,40}\]|\([^\)\n]{1,40}\))")
+FLIGHT_PREFIX_RE = re.compile(r"^[0-9A-Za-z]+:")
 CONTENT_SIGNAL_KEYS = {
     "prompt",
     "tags",
@@ -42,6 +43,15 @@ MODEL_SIGNAL_KEYS = {
 }
 
 
+def _looks_like_flight_control_chunk(decoded: str) -> bool:
+    for line in decoded.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        return FLIGHT_PREFIX_RE.match(stripped) is not None
+    return False
+
+
 def _extract_from_decoded_chunk(
     decoded: str, pending_text_ref_id: str | None
 ) -> tuple[dict[str, Any] | None, dict[str, Any] | None, dict[str, str], str | None]:
@@ -53,7 +63,7 @@ def _extract_from_decoded_chunk(
     # Next.js Flight can emit text references in two steps:
     #   25:T690,        (declares text ref id)
     #   <next chunk>    (actual text body)
-    if next_pending and ":" not in decoded:
+    if next_pending and not _looks_like_flight_control_chunk(decoded):
         text_refs[next_pending] = decoded
         next_pending = None
 
@@ -165,9 +175,9 @@ def _find_lyrics_like_text(
         stripped = chunk.strip()
         if (
             stripped
-            and ":" not in stripped
             and stripped not in seen
             and not stripped.startswith("self.__next_f.push")
+            and not _looks_like_flight_control_chunk(chunk)
         ):
             seen.add(stripped)
             candidates.append(stripped)

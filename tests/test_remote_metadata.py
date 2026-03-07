@@ -46,6 +46,21 @@ class FetchSunoTrackMetadataTests(unittest.TestCase):
         self.assertIn("[Intro]", result["prompt"])
         self.assertIn("We walked the pier", result["prompt"])
 
+    def test_resolves_lyrics_when_text_chunk_contains_colon(self):
+        html = (self.fixture_root / "temp_suno_example_00f9.html").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        with patch.object(rm, "_read_html", return_value=html):
+            result = rm.fetch_suno_track_metadata(
+                "https://suno.com/song/a298ed10-b551-407f-a003-8f683d4100f9"
+            )
+
+        self.assertIsNotNone(result["prompt"])
+        self.assertNotEqual(result["prompt"], "failed")
+        self.assertFalse(result["prompt"].startswith("$"))
+        self.assertIn("[verse 1]", result["prompt"].lower())
+        self.assertIn("I hear the whisper in the flame:", result["prompt"])
+
     def test_unresolved_short_prompt_uses_lyrics_like_fallback(self):
         lyric_chunk = (
             "[Intro]\n"

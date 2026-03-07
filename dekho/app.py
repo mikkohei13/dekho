@@ -64,7 +64,7 @@ def create_app() -> Flask:
                 {
                     "track_id": track_id,
                     "filepath": relative_path.as_posix(),
-                    "display_title": title_new or title or "Unknown",
+                    "display_title": title_new or "Unknown",
                     "title": title or "",
                     "tags": tags,
                     "labels": labels,

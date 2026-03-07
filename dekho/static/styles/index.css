@@ -682,6 +682,19 @@ body {
   padding-inline: 0.95rem;
 }
 
+.scan-link.is-disabled,
+.scan-link.is-disabled:hover,
+.scan-link.is-disabled:focus-visible {
+  opacity: 0.6;
+  cursor: wait;
+  filter: none;
+  border-color: rgba(147, 164, 197, 0.28);
+  box-shadow:
+    inset 0 0 0 1px rgba(240, 246, 255, 0.03),
+    0 0 0 1px rgba(10, 12, 18, 0.55);
+  pointer-events: none;
+}
+
 code {
   color: #b7d3ff;
 }

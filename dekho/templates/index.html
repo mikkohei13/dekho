@@ -65,7 +65,7 @@
                     </p>
                     <div class="track-meta-block">
                       <p class="track-meta" id="track-meta-title">
-                        {{ track.title or "-" }}
+                        {{ track.display_title }}
                       </p>
                       {% if track.tags %}
                         <p class="track-meta" id="track-meta-tags">
@@ -113,6 +113,7 @@
         tracksLabelCatalog = [];
       }
     }
+    const scanLink = document.querySelector(".scan-link");
     const trackItems = Array.from(document.querySelectorAll(".track-item"));
     const tracksFilterInput = document.getElementById("tracks-filter-input");
     const tracksFilterCount = document.getElementById("tracks-filter-count");
@@ -157,7 +158,7 @@
     }
 
     function getDisplayTitle(data) {
-      return data.title_new || data.title || "Unknown";
+      return data.title_new || "Unknown";
     }
 
     function hasRemoteTags(tags) {
@@ -175,6 +176,16 @@
       const total = trackItems.length;
       const matched = trackItems.filter((item) => !item.hidden).length;
       tracksFilterCount.textContent = `${matched}/${total} tracks`;
+    }
+
+    function setScanLinkBusy() {
+      if (!(scanLink instanceof HTMLAnchorElement)) {
+        return;
+      }
+      scanLink.dataset.scanBusy = "true";
+      scanLink.setAttribute("aria-disabled", "true");
+      scanLink.classList.add("is-disabled");
+      scanLink.textContent = "Scanning...";
     }
 
     function parseLabelKeys(labelKeysValue) {
@@ -794,6 +805,18 @@
       showPlayingTrackButton.disabled = true;
       showPlayingTrackButton.addEventListener("click", showPlayingTrackInContentPanel);
     }
+    if (scanLink instanceof HTMLAnchorElement) {
+      scanLink.addEventListener("click", (event) => {
+        if (scanLink.dataset.scanBusy === "true") {
+          event.preventDefault();
+          return;
+        }
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+          return;
+        }
+        setScanLinkBusy();
+      });
+    }
 
     contentPanel.addEventListener("click", (event) => {
       const target = event.target;
@@ -839,6 +862,33 @@
       if (target.closest("#track-user-data-form")) {
         markTrackUserDataUnsaved();
       }
+    });
+
+    contentPanel.addEventListener("submit", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLFormElement)) {
+        return;
+      }
+      if (target.id === "track-user-data-form") {
+        event.preventDefault();
+      }
+    });
+
+    contentPanel.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") {
+        return;
+      }
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      if (!(target instanceof HTMLInputElement)) {
+        return;
+      }
+      if (!target.closest("#track-user-data-form")) {
+        return;
+      }
+      event.preventDefault();
     });
   </script>
 </body>

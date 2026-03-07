@@ -136,6 +136,21 @@ def upsert_track(
             """,
             (track_id, filepath, title, artist, duration, url, date_created, date_added),
         )
+        if title and title.strip():
+            connection.execute(
+                """
+                INSERT INTO track_user_data (track_id, title_new, notes)
+                VALUES (?, ?, '')
+                ON CONFLICT(track_id) DO UPDATE SET
+                    title_new = CASE
+                        WHEN track_user_data.title_new IS NULL
+                            OR TRIM(track_user_data.title_new) = ''
+                        THEN excluded.title_new
+                        ELSE track_user_data.title_new
+                    END
+                """,
+                (track_id, title),
+            )
 
 
 def get_all_tracks_file_data() -> list[dict[str, object]]:
