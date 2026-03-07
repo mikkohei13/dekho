@@ -59,6 +59,7 @@ function renderFilterOptions() {
     tracksLabelFilterOptions,
     tracksLabelCatalog,
     selectedTrackFilterLabelKeys: state.selectedTrackFilterLabelKeys,
+    selectedMissingTrackFilterCategories: state.selectedMissingTrackFilterCategories,
   });
 }
 
@@ -68,6 +69,7 @@ function applyFilter() {
     tracksFilterInput,
     tracksFilterCount,
     selectedTrackFilterLabelKeys: state.selectedTrackFilterLabelKeys,
+    selectedMissingTrackFilterCategories: state.selectedMissingTrackFilterCategories,
     tracksLabelFilterSummary,
     tracksSelectedLabels,
     tracksClearFiltersButton,
@@ -181,6 +183,7 @@ bindFilterEvents({
   tracksClearFiltersButton,
   tracksLabelFilter,
   selectedTrackFilterLabelKeys: state.selectedTrackFilterLabelKeys,
+  selectedMissingTrackFilterCategories: state.selectedMissingTrackFilterCategories,
   applyTracksFilter: applyFilter,
   renderTrackLabelFilterOptions: renderFilterOptions,
 });

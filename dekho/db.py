@@ -107,7 +107,7 @@ def get_all_tracks_file_data() -> list[dict[str, object]]:
     with get_connection() as connection:
         rows = connection.execute(
             """
-            SELECT tfd.track_id, tfd.filepath, tfd.title, tud.title_new, trd.tags
+            SELECT tfd.track_id, tfd.filepath, tfd.title, tud.title_new, tud.notes, trd.tags
             FROM tracks_file_data AS tfd
             LEFT JOIN track_user_data AS tud ON tud.track_id = tfd.track_id
             LEFT JOIN track_remote_data AS trd ON trd.track_id = tfd.track_id
@@ -138,7 +138,8 @@ def get_all_tracks_file_data() -> list[dict[str, object]]:
             "filepath": row[1],
             "title": row[2],
             "title_new": row[3],
-            "tags": row[4],
+            "notes": row[4],
+            "tags": row[5],
             "label_keys": label_keys_by_track_id.get(str(row[0]), []),
             "labels": labels_by_track_id.get(str(row[0]), []),
         }

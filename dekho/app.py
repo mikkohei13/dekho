@@ -117,6 +117,7 @@ def create_app() -> Flask:
             filepath = str(row["filepath"]) if row["filepath"] else ""
             title = str(row["title"]) if row["title"] else ""
             title_new = str(row["title_new"]) if row["title_new"] else ""
+            notes = str(row["notes"]) if row["notes"] else ""
             tags = str(row["tags"]) if row["tags"] else ""
             labels = row["labels"] if isinstance(row.get("labels"), list) else []
             label_keys = row["label_keys"] if isinstance(row.get("label_keys"), list) else []
@@ -138,6 +139,7 @@ def create_app() -> Flask:
                     "filepath": relative_path.as_posix(),
                     "display_title": title_new or "Unknown",
                     "title": title or "",
+                    "notes": notes,
                     "tags": tags,
                     "labels": labels,
                     "label_keys": label_keys,

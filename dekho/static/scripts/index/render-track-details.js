@@ -156,7 +156,7 @@ export function renderDetails(data, contentPanelBody) {
         <h2>
           ${escapeHtml(displayTitle)}${hasRemoteTags(tags) ? "<span class=\"remote-tags-indicator\">✦</span>" : ""}
         </h2>
-        <button id="play-current-track-btn" type="button">Play</button>
+        <button id="play-current-track-btn" type="button">▶ Play</button>
       </header>
       <div class="track-form">
         <form id="track-user-data-form">

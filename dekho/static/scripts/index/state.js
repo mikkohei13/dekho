@@ -39,6 +39,7 @@ export function createUiState() {
     activeTrackData: null,
     hasUnsavedUserDataChanges: false,
     selectedTrackFilterLabelKeys: new Set(),
+    selectedMissingTrackFilterCategories: new Set(),
   };
 }
 

@@ -1,5 +1,7 @@
 import { domSafeValue, escapeHtml, parseLabelKeys } from "./dom.js";
 
+const MISSING_LABEL_FILTER_CATEGORIES = ["playlist", "like", "setting"];
+
 function hasPlaylistLabel(labelKeys) {
   if (!Array.isArray(labelKeys)) {
     return false;
@@ -92,10 +94,22 @@ function getTrackItemLabelKeys(item) {
   return new Set(parseLabelKeys(item.dataset.labelKeys));
 }
 
+function getTrackItemLabelCategories(item) {
+  const categories = new Set();
+  parseLabelKeys(item.dataset.labelKeys).forEach((labelKey) => {
+    const category = labelKey.split(".", 1)[0];
+    if (category) {
+      categories.add(category);
+    }
+  });
+  return categories;
+}
+
 export function renderTrackLabelFilterOptions({
   tracksLabelFilterOptions,
   tracksLabelCatalog,
   selectedTrackFilterLabelKeys,
+  selectedMissingTrackFilterCategories,
 }) {
   if (!(tracksLabelFilterOptions instanceof HTMLElement)) {
     return;
@@ -131,7 +145,30 @@ export function renderTrackLabelFilterOptions({
     }
   });
 
-  tracksLabelFilterOptions.innerHTML = categories.map(({ categoryName, options }) => {
+  const missingCategorySectionHtml = `
+    <section class="tracks-filter-category">
+      <h4 class="tracks-filter-category-heading">Missing category labels</h4>
+      <div class="tracks-filter-category-options">
+        ${MISSING_LABEL_FILTER_CATEGORIES.map((categoryName) => {
+          const inputId = `tracks-filter-missing-${domSafeValue(categoryName)}`;
+          const checked = selectedMissingTrackFilterCategories.has(categoryName) ? " checked" : "";
+          return `
+            <label for="${escapeHtml(inputId)}" class="tracks-filter-option">
+              <input
+                id="${escapeHtml(inputId)}"
+                class="tracks-filter-option-input"
+                type="checkbox"
+                data-missing-category="${escapeHtml(categoryName)}"${checked}
+              >
+              <span>No ${escapeHtml(categoryName)} label</span>
+            </label>
+          `;
+        }).join("")}
+      </div>
+    </section>
+  `;
+
+  const labelCategorySectionsHtml = categories.map(({ categoryName, options }) => {
     const optionsHtml = options.map(({ key, label }) => {
       const inputId = `tracks-filter-label-${domSafeValue(key)}`;
       const checked = selectedTrackFilterLabelKeys.has(key) ? " checked" : "";
@@ -155,6 +192,8 @@ export function renderTrackLabelFilterOptions({
       </section>
     `;
   }).join("");
+
+  tracksLabelFilterOptions.innerHTML = `${missingCategorySectionHtml}${labelCategorySectionsHtml}`;
 }
 
 export function updateTracksFilterSummary({
@@ -163,22 +202,27 @@ export function updateTracksFilterSummary({
   tracksClearFiltersButton,
   tracksFilterInput,
   selectedTrackFilterLabelKeys,
+  selectedMissingTrackFilterCategories,
   trackLabelByKey,
 }) {
   if (tracksLabelFilterSummary instanceof HTMLElement) {
-    tracksLabelFilterSummary.textContent = `Labels (${selectedTrackFilterLabelKeys.size})`;
+    const selectedCount = selectedTrackFilterLabelKeys.size + selectedMissingTrackFilterCategories.size;
+    tracksLabelFilterSummary.textContent = `Labels (${selectedCount})`;
   }
 
   if (tracksSelectedLabels instanceof HTMLElement) {
     const selectedLabels = Array.from(selectedTrackFilterLabelKeys)
       .map((key) => trackLabelByKey.get(key) || key);
-    if (selectedLabels.length === 0) {
+    const missingCategoryLabels = Array.from(selectedMissingTrackFilterCategories)
+      .map((category) => `No ${category}`);
+    const selectedFilterTexts = selectedLabels.concat(missingCategoryLabels);
+    if (selectedFilterTexts.length === 0) {
       tracksSelectedLabels.hidden = true;
       tracksSelectedLabels.textContent = "";
     } else {
       const maxVisible = 8;
-      const visibleLabels = selectedLabels.slice(0, maxVisible).join(", ");
-      const moreCount = selectedLabels.length - maxVisible;
+      const visibleLabels = selectedFilterTexts.slice(0, maxVisible).join(", ");
+      const moreCount = selectedFilterTexts.length - maxVisible;
       tracksSelectedLabels.hidden = false;
       tracksSelectedLabels.textContent = moreCount > 0
         ? `Selected: ${visibleLabels} (+${moreCount})`
@@ -188,7 +232,8 @@ export function updateTracksFilterSummary({
 
   if (tracksClearFiltersButton instanceof HTMLButtonElement) {
     const hasTextQuery = tracksFilterInput instanceof HTMLInputElement && tracksFilterInput.value.trim() !== "";
-    tracksClearFiltersButton.disabled = !hasTextQuery && selectedTrackFilterLabelKeys.size === 0;
+    const hasLabelFilters = selectedTrackFilterLabelKeys.size > 0 || selectedMissingTrackFilterCategories.size > 0;
+    tracksClearFiltersButton.disabled = !hasTextQuery && !hasLabelFilters;
   }
 }
 
@@ -206,6 +251,7 @@ export function applyTracksFilter({
   tracksFilterInput,
   tracksFilterCount,
   selectedTrackFilterLabelKeys,
+  selectedMissingTrackFilterCategories,
   tracksLabelFilterSummary,
   tracksSelectedLabels,
   tracksClearFiltersButton,
@@ -215,13 +261,18 @@ export function applyTracksFilter({
     .trim()
     .toLocaleLowerCase();
   trackItems.forEach((item) => {
-    const haystack = (item.textContent || "").toLocaleLowerCase();
+    const trackMetaBlock = item.querySelector(".track-meta-block");
+    const haystack = `${item.textContent || ""} ${trackMetaBlock?.textContent || ""}`.toLocaleLowerCase();
     const textMatches = query ? haystack.includes(query) : true;
     const trackLabelKeys = getTrackItemLabelKeys(item);
     const labelsMatch = Array.from(selectedTrackFilterLabelKeys).every(
       (labelKey) => trackLabelKeys.has(labelKey)
     );
-    item.hidden = !(textMatches && labelsMatch);
+    const trackLabelCategories = getTrackItemLabelCategories(item);
+    const missingCategoryMatches = Array.from(selectedMissingTrackFilterCategories).every(
+      (category) => !trackLabelCategories.has(category)
+    );
+    item.hidden = !(textMatches && labelsMatch && missingCategoryMatches);
   });
   updateTracksFilterCount(trackItems, tracksFilterCount);
   updateTracksFilterSummary({
@@ -230,6 +281,7 @@ export function applyTracksFilter({
     tracksClearFiltersButton,
     tracksFilterInput,
     selectedTrackFilterLabelKeys,
+    selectedMissingTrackFilterCategories,
     trackLabelByKey,
   });
 }
@@ -262,6 +314,11 @@ export function renderTrackListItem(trackId, data, deps) {
   const trackMetaTags = trackItem.querySelector("[data-track-item-tags]");
   if (trackMetaTags instanceof HTMLElement) {
     trackMetaTags.textContent = toTrackMetaText(data.tags);
+  }
+
+  const trackMetaNotes = trackItem.querySelector("[data-track-item-notes]");
+  if (trackMetaNotes instanceof HTMLElement) {
+    trackMetaNotes.textContent = toTrackMetaText(data.notes);
   }
 
   updateTrackItemLabels(trackId, data.labels, trackLabelByKey);

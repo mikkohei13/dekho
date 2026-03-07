@@ -41,6 +41,7 @@ export function bindFilterEvents({
   tracksClearFiltersButton,
   tracksLabelFilter,
   selectedTrackFilterLabelKeys,
+  selectedMissingTrackFilterCategories,
   applyTracksFilter,
   renderTrackLabelFilterOptions,
 }) {
@@ -52,6 +53,16 @@ export function bindFilterEvents({
     tracksLabelFilterOptions.addEventListener("change", (event) => {
       const target = event.target;
       if (!(target instanceof HTMLInputElement) || !target.classList.contains("tracks-filter-option-input")) {
+        return;
+      }
+      const missingCategory = target.dataset.missingCategory;
+      if (missingCategory) {
+        if (target.checked) {
+          selectedMissingTrackFilterCategories.add(missingCategory);
+        } else {
+          selectedMissingTrackFilterCategories.delete(missingCategory);
+        }
+        applyTracksFilter();
         return;
       }
       const labelKey = target.dataset.labelKey;
@@ -70,6 +81,7 @@ export function bindFilterEvents({
   if (tracksClearFiltersButton instanceof HTMLButtonElement) {
     tracksClearFiltersButton.addEventListener("click", () => {
       selectedTrackFilterLabelKeys.clear();
+      selectedMissingTrackFilterCategories.clear();
       if (tracksFilterInput instanceof HTMLInputElement) {
         tracksFilterInput.value = "";
       }
@@ -86,6 +98,17 @@ export function bindFilterEvents({
       if (tracksLabelFilter.open) {
         renderTrackLabelFilterOptions();
       }
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!tracksLabelFilter.open) {
+        return;
+      }
+      const target = event.target;
+      if (!(target instanceof Node) || tracksLabelFilter.contains(target)) {
+        return;
+      }
+      tracksLabelFilter.open = false;
     });
   }
 }
