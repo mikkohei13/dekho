@@ -26,6 +26,12 @@ The app is available at http://127.0.0.1:5000
 - **Frontend:** Server-rendered Jinja2 templates with minimal vanilla JS
 - **Dependencies:** Managed with uv (`pyproject.toml` / `uv.lock`)
 
+## Tests
+
+```bash
+uv run python -m unittest discover -s tests -v
+```
+
 ## Database
 
 Use this command to get more information about the database:
@@ -93,7 +99,9 @@ uv run dev_db_summary.py
 
 - Keep it simple
 - This is one-person app, so avoid premature optimization
-- No accessibility features
-- No authentication
-- Desktop-optimized UI, no mobile support
-- No JavaScript frameworks
+- Add unit tests to ./tests for the most important features
+- Avoid unnecessary complexity:
+  - No accessibility features
+  - No authentication
+  - Desktop-optimized UI, no mobile support
+  - No JavaScript frameworks

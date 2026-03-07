@@ -13,6 +13,14 @@ def _stringify_tag_value(value: object) -> str:
     return str(value)
 
 
+def _track_id_from_url(url: str) -> str:
+    if url.startswith(SUNO_SONG_URL_PREFIX):
+        return url.removeprefix(SUNO_SONG_URL_PREFIX)
+    if "/song/" in url:
+        return url.rsplit("/", 1)[-1]
+    return url
+
+
 def extract_track_id(file_path: Path) -> str | None:
     metadata = extract_file_metadata(file_path)
     track_id = metadata.get("track_id")
@@ -55,12 +63,7 @@ def extract_file_metadata(file_path: Path) -> dict[str, str | float | None]:
 
         if key_str.startswith("WOAS") and url is None:
             url = raw_value
-            if raw_value.startswith(SUNO_SONG_URL_PREFIX):
-                track_id = raw_value.removeprefix(SUNO_SONG_URL_PREFIX)
-            elif "/song/" in raw_value:
-                track_id = raw_value.rsplit("/", 1)[-1]
-            else:
-                track_id = raw_value
+            track_id = _track_id_from_url(raw_value)
             continue
 
         if key_str.startswith("COMM"):

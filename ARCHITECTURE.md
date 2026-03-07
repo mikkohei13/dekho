@@ -12,10 +12,16 @@ Metadata are fetched server-side from public Suno track pages by parsing Next.js
   - a content candidate node is selected for `prompt` / `tags` / `negative_tags`,
   - a model candidate node is selected independently for `major_model_version` / `model_name`.
 - Prompt resolution:
-  - if prompt is a token like `$25`, it is resolved through Flight text references,
+  - if prompt is a token like `$25` or `$3e`, it is resolved through Flight text references (alphanumeric IDs supported),
   - collected from either:
     1) inline ref format: `25:Txxxx,<text...>` (text starts on same line/chunk), or
     2) marker + next chunk format: `25:Txxxx,` followed by a separate decoded chunk containing the text body.
+  - validity gate: if resolved prompt still starts with `$` or is shorter than 5 characters, fallback lyric detection is attempted.
+- Lyrics fallback (when prompt looks invalid):
+  - scans decoded Flight text chunks and collected text refs for lyric-like candidates,
+  - scores by stanza markers in `[]` or `()`, newline count, and text length (typically hundreds of characters),
+  - returns best candidate only when confidence threshold is met,
+  - otherwise returns literal `"failed"` (safe failure, no exception).
 - Model field resolution order:
   1) best model candidate node,
   2) selected content candidate node,
@@ -31,6 +37,9 @@ Metadata are fetched server-side from public Suno track pages by parsing Next.js
 - Prompt as $<id> reference with:
   - inline T text payload, or
   - marker-only ref followed by a separate text chunk.
+- Alphanumeric prompt refs (for example `$1e`, `$3e`).
+- Invalid/short prompt fallback to lyric-like candidate extraction.
+- Low-confidence fallback path returning `"failed"` instead of crashing.
 - Model fields living on a different node than prompt/tags.
 - Missing `negative_tags`.
 
