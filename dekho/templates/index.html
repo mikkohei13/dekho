@@ -49,7 +49,7 @@
                     loading="lazy"
                   >
                   <div class="track-item-body">
-                    <h2 class="track-title">
+                    <h2 class="track-title" data-track-item-title>
                       {{ track.display_title }}
                       {% if track.has_remote_tags %}
                         <span class="remote-tags-indicator">✦</span>
@@ -64,14 +64,12 @@
                       {% endif %}
                     </p>
                     <div class="track-meta-block">
-                      <p class="track-meta" id="track-meta-title">
+                      <p class="track-meta" data-track-item-display-title>
                         {{ track.display_title }}
                       </p>
-                      {% if track.tags %}
-                        <p class="track-meta" id="track-meta-tags">
-                          {{ track.tags }}
-                        </p>
-                      {% endif %}
+                      <p class="track-meta" data-track-item-tags>
+                        {{ track.tags or "-" }}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -222,6 +220,11 @@
         .map((key) => trackLabelByKey.get(key) || key)
         .join(", ");
       labelsElement.textContent = visibleLabels || "-";
+    }
+
+    function toTrackMetaText(value) {
+      const text = String(value ?? "").trim();
+      return text || "-";
     }
 
     function renderTrackLabelFilterOptions() {
@@ -402,17 +405,29 @@
       }).join("");
     }
 
-    function updateTrackListTitle(trackId, data) {
+    function renderTrackListItem(trackId, data) {
       const trackItem = document.querySelector(`.track-item[data-track-id="${CSS.escape(trackId)}"]`);
-      if (!trackItem) {
+      if (!(trackItem instanceof HTMLElement)) {
         return;
       }
-      const titleElement = trackItem.querySelector(".track-title");
-      if (!titleElement) {
-        return;
-      }
+
       const displayTitle = getDisplayTitle(data);
-      titleElement.innerHTML = `${escapeHtml(displayTitle)}${hasRemoteTags(data.tags) ? remoteTagsIndicatorHtml() : ""}`;
+      const titleElement = trackItem.querySelector("[data-track-item-title]");
+      if (titleElement instanceof HTMLElement) {
+        titleElement.innerHTML = `${escapeHtml(displayTitle)}${hasRemoteTags(data.tags) ? remoteTagsIndicatorHtml() : ""}`;
+      }
+
+      const trackMetaTitle = trackItem.querySelector("[data-track-item-display-title]");
+      if (trackMetaTitle instanceof HTMLElement) {
+        trackMetaTitle.textContent = displayTitle;
+      }
+
+      const trackMetaTags = trackItem.querySelector("[data-track-item-tags]");
+      if (trackMetaTags instanceof HTMLElement) {
+        trackMetaTags.textContent = toTrackMetaText(data.tags);
+      }
+
+      updateTrackItemLabels(trackId, data.labels);
       applyTracksFilter();
     }
 
@@ -621,8 +636,7 @@
           throw new Error("Unable to load track details.");
         }
         const data = await response.json();
-        updateTrackListTitle(trackId, data);
-        updateTrackItemLabels(trackId, data.labels);
+        renderTrackListItem(trackId, data);
         renderDetails(data);
       } catch (error) {
         if (contentPanelBody instanceof HTMLElement) {
@@ -650,8 +664,7 @@
         if (!response.ok) {
           throw new Error(payload.error || "Failed to fetch data from Suno.");
         }
-        updateTrackListTitle(trackId, payload);
-        updateTrackItemLabels(trackId, payload.labels);
+        renderTrackListItem(trackId, payload);
         updatePersistentTrackTitleIfPlaying(payload);
         renderDetails(payload);
       } catch (fetchError) {
@@ -714,8 +727,7 @@
         if (!response.ok) {
           throw new Error(payload.error || "Failed to save track data.");
         }
-        updateTrackListTitle(trackId, payload);
-        updateTrackItemLabels(trackId, payload.labels);
+        renderTrackListItem(trackId, payload);
         updatePersistentTrackTitleIfPlaying(payload);
         renderDetails(payload);
       } catch (saveError) {

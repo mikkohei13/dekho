@@ -56,3 +56,13 @@ Metadata are fetched server-side from public Suno track pages by parsing Next.js
 - API payload uses label keys (`labels: string[]`), validated against current catalog (`normalize_label_keys`).
 - Track filtering is key-based via `POST /api/tracks/filter-by-labels`; SQL returns tracks that contain all selected labels.
 - Safety check: index route (`/`) returns plain-text error instead of UI if DB has assigned label keys not present in current `LABEL_CATALOG`.
+
+## Track list synchronization
+
+- The left sidebar (`#tracks-list`) is updated through one client-side projection function: `renderTrackListItem(trackId, data)` in `dekho/templates/index.html`.
+- `renderTrackListItem` is the single path used after:
+  - loading track details (`GET /api/tracks/<track_id>`),
+  - saving user data (`POST /api/tracks/<track_id>/user-data`),
+  - fetching Suno metadata (`POST /api/tracks/<track_id>/remote-data`).
+- The function projects the API payload into sidebar UI fields (title, remote-tag indicator, labels, tags text), then reapplies filters.
+- Row DOM uses `data-track-item-*` selectors (`data-track-item-title`, `data-track-item-display-title`, `data-track-item-tags`, `data-track-item-labels`) so new sidebar fields can be added by extending this projection in one place.
