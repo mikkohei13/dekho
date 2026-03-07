@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tag Similarity Network - Dekho</title>
+  <script src="https://unpkg.com/cytoscape@3.30.1/dist/cytoscape.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0e0e12;
+      color: #d4d4d8;
+      min-height: 100vh;
+    }
+    .page-header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid #27272a;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .page-header h1 { font-size: 1.2rem; font-weight: 600; }
+    .back-link {
+      color: #71717a;
+      text-decoration: none;
+      font-size: 0.875rem;
+    }
+    .back-link:hover { color: #a1a1aa; }
+    .controls {
+      padding: 0.85rem 1.5rem;
+      border-bottom: 1px solid #27272a;
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .controls label {
+      color: #a1a1aa;
+      font-size: 0.82rem;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .controls input, .controls select, .controls button {
+      background: #18181b;
+      color: #d4d4d8;
+      border: 1px solid #3f3f46;
+      border-radius: 4px;
+      font-size: 0.82rem;
+      padding: 0.28rem 0.45rem;
+    }
+    .controls button { cursor: pointer; }
+    .controls button:hover { border-color: #6366f1; }
+    .stats {
+      padding: 0.7rem 1.5rem;
+      color: #71717a;
+      border-bottom: 1px solid #27272a;
+      font-size: 0.8rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.2rem;
+    }
+    .stats span { white-space: nowrap; }
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 340px;
+      min-height: calc(100vh - 164px);
+    }
+    #graph {
+      width: 100%;
+      min-height: 640px;
+      border-right: 1px solid #27272a;
+    }
+    .sidebar {
+      padding: 0.95rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      overflow: auto;
+    }
+    .card {
+      background: #141418;
+      border: 1px solid #27272a;
+      border-radius: 8px;
+      padding: 0.75rem;
+    }
+    .card h3 {
+      font-size: 0.9rem;
+      margin-bottom: 0.45rem;
+      color: #c4c4cb;
+    }
+    .meta-line {
+      font-size: 0.8rem;
+      color: #a1a1aa;
+      line-height: 1.4;
+      margin-top: 0.35rem;
+    }
+    .empty {
+      color: #71717a;
+      font-size: 0.8rem;
+      line-height: 1.4;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.08rem 0.38rem;
+      border-radius: 10px;
+      border: 1px solid #3f3f46;
+      background: #1c1c22;
+      font-size: 0.72rem;
+      margin-right: 0.35rem;
+      margin-bottom: 0.3rem;
+      color: #c4c4cb;
+    }
+    .like3 { border-color: #fb7185; color: #fecdd3; }
+    .like2 { border-color: #f59e0b; color: #fde68a; }
+    .like1 { border-color: #22d3ee; color: #a5f3fc; }
+    .like0 { border-color: #64748b; color: #cbd5e1; }
+    .not_like { border-color: #475569; color: #94a3b8; }
+    .unrated { border-color: #52525b; color: #d4d4d8; }
+    #selected-track-title {
+      font-size: 0.95rem;
+      color: #e4e4e7;
+      margin-bottom: 0.45rem;
+      line-height: 1.3;
+    }
+    #selected-track-player { width: 100%; margin-top: 0.6rem; }
+    #network-error {
+      display: none;
+      color: #ef4444;
+      font-size: 0.85rem;
+      padding: 1rem 1.5rem;
+    }
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; }
+      #graph { border-right: 0; border-bottom: 1px solid #27272a; min-height: 580px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="page-header">
+    <a class="back-link" href="/">← Back to Dekho</a>
+    <h1>Tag Similarity Network</h1>
+  </header>
+
+  <div class="controls">
+    <label>
+      Min shared tags
+      <input id="min-shared-tags" type="range" min="1" max="8" value="1">
+      <span id="min-shared-tags-value">1</span>
+    </label>
+    <label>
+      Max edges
+      <input id="max-edges" type="range" min="100" max="1800" step="50" value="400">
+      <span id="max-edges-value">400</span>
+    </label>
+    <label>
+      Min rating
+      <select id="min-like">
+        <option value="0">all</option>
+        <option value="1">like0+</option>
+        <option value="2">like1+</option>
+        <option value="3">like2+</option>
+        <option value="4">like3 only</option>
+      </select>
+    </label>
+    <button id="rerun-layout" type="button">Re-layout</button>
+  </div>
+
+  <div class="stats" id="stats"></div>
+  <div id="network-error"></div>
+
+  <section class="layout">
+    <div id="graph"></div>
+    <aside class="sidebar">
+      <div class="card">
+        <h3>Legend</h3>
+        <p class="meta-line">Node = track, edge = shared tags. Thicker edges mean more shared tags.</p>
+        <div class="meta-line">
+          <span class="badge like3">like3 (highest)</span>
+          <span class="badge like2">like2</span>
+          <span class="badge like1">like1</span>
+          <span class="badge like0">like0</span>
+          <span class="badge not_like">not_like</span>
+          <span class="badge unrated">unrated</span>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Selection</h3>
+        <div id="selection-summary" class="empty">Click a node to load track details and play audio.</div>
+      </div>
+      <div class="card">
+        <h3>Track Details</h3>
+        <div id="selected-track">
+          <div class="empty">No track selected.</div>
+        </div>
+        <audio id="selected-track-player" controls preload="metadata">
+          Your browser does not support audio playback.
+        </audio>
+      </div>
+    </aside>
+  </section>
+
+<script>
+(function () {
+  const LIKE_COLOR = {
+    "like.like3": "#e11d48",
+    "like.like2": "#d97706",
+    "like.like1": "#0891b2",
+    "like.like0": "#64748b",
+    "like.not_like": "#475569",
+    "unrated": "#52525b",
+  };
+  const LIKE_LABEL = {
+    "like.like3": "like3",
+    "like.like2": "like2",
+    "like.like1": "like1",
+    "like.like0": "like0",
+    "like.not_like": "not_like",
+    "unrated": "unrated",
+  };
+
+  let RAW_DATA = null;
+  let CY = null;
+  let FILTERED_DATA = { nodes: [], edges: [] };
+
+  function escapeHtml(value) {
+    return String(value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  function classNameForLike(likeKey) {
+    const label = LIKE_LABEL[likeKey] || "unrated";
+    return label.replace(".", "_");
+  }
+
+  function setStats(parts) {
+    document.getElementById("stats").innerHTML = parts.join("");
+  }
+
+  function showError(message) {
+    const el = document.getElementById("network-error");
+    el.textContent = message;
+    el.style.display = "block";
+  }
+
+  function clearError() {
+    const el = document.getElementById("network-error");
+    el.textContent = "";
+    el.style.display = "none";
+  }
+
+  function likeDistributionText(distribution) {
+    return Object.entries(LIKE_LABEL)
+      .filter(([key]) => distribution[key])
+      .map(([key, label]) => `${label}:${distribution[key]}`)
+      .join(", ");
+  }
+
+  function nodeMatchesMinLike(node, minLikeWeight) {
+    return Number(node.like_weight || 1) >= minLikeWeight;
+  }
+
+  function filterData(data, minSharedTags, maxEdges, minLikeWeight) {
+    const keptNodes = data.nodes.filter((node) => nodeMatchesMinLike(node, minLikeWeight));
+    const keptNodeIds = new Set(keptNodes.map((node) => node.id));
+    const keptEdges = [];
+    for (const edge of data.edges) {
+      if (keptEdges.length >= maxEdges) break;
+      if (!keptNodeIds.has(edge.source) || !keptNodeIds.has(edge.target)) continue;
+      if (Number(edge.shared_tag_count || 0) < minSharedTags) continue;
+      keptEdges.push(edge);
+    }
+    return { nodes: keptNodes, edges: keptEdges };
+  }
+
+  function buildElements(data) {
+    const elements = [];
+    for (const node of data.nodes) {
+      const weight = Number(node.like_weight || 1);
+      const degreeHint = Math.min(Number(node.tag_count || 0), 12);
+      const size = 10 + weight * 4 + degreeHint * 0.25;
+      elements.push({
+        data: {
+          id: node.id,
+          track_id: node.track_id,
+          label: node.label || node.track_id,
+          like_key: node.like_key || "unrated",
+          like_label: LIKE_LABEL[node.like_key] || "unrated",
+          like_weight: weight,
+          tag_count: node.tag_count || 0,
+          tags_sample: (node.tags_sample || []).join(", "),
+          size: size,
+          color: LIKE_COLOR[node.like_key] || LIKE_COLOR.unrated,
+        },
+      });
+    }
+    for (const edge of data.edges) {
+      elements.push({
+        data: {
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          shared_tag_count: Number(edge.shared_tag_count || 0),
+          weighted_shared_score: Number(edge.weighted_shared_score || 0),
+          shared_tags_sample: (edge.shared_tags_sample || []).join(", "),
+        },
+      });
+    }
+    return elements;
+  }
+
+  function renderGraph(data) {
+    const graphEl = document.getElementById("graph");
+    if (CY) {
+      CY.destroy();
+      CY = null;
+    }
+    if (!data.nodes.length) {
+      graphEl.innerHTML = '<div class="empty" style="padding:1rem;">No nodes match the active filters.</div>';
+      return;
+    }
+    graphEl.innerHTML = "";
+
+    CY = cytoscape({
+      container: graphEl,
+      elements: buildElements(data),
+      style: [
+        {
+          selector: "node",
+          style: {
+            "background-color": "data(color)",
+            width: "data(size)",
+            height: "data(size)",
+            label: "",
+            "border-width": 1.25,
+            "border-color": "#d4d4d844",
+            opacity: "mapData(like_weight, 0, 4, 0.55, 1.0)",
+          },
+        },
+        {
+          selector: "node:selected",
+          style: {
+            label: "data(label)",
+            "font-size": 10,
+            color: "#f4f4f5",
+            "text-wrap": "wrap",
+            "text-max-width": 180,
+            "text-background-color": "#111827dd",
+            "text-background-opacity": 1,
+            "text-background-padding": 4,
+            "text-border-width": 1,
+            "text-border-color": "#374151",
+          },
+        },
+        {
+          selector: "edge",
+          style: {
+            width: "mapData(shared_tag_count, 1, 8, 1, 9)",
+            "line-color": "#818cf855",
+            "curve-style": "bezier",
+            opacity: "mapData(shared_tag_count, 1, 8, 0.2, 0.85)",
+          },
+        },
+        {
+          selector: "edge:selected",
+          style: {
+            "line-color": "#a5b4fc",
+            opacity: 1,
+          },
+        },
+      ],
+      layout: {
+        name: "cose",
+        fit: true,
+        padding: 20,
+        nodeRepulsion: 28000,
+        idealEdgeLength: 180,
+        edgeElasticity: 120,
+        nestingFactor: 0.8,
+        gravity: 0.3,
+        nodeOverlap: 120,
+        componentSpacing: 140,
+        numIter: 2200,
+        randomize: true,
+        animate: false,
+      },
+    });
+
+    CY.on("tap", "node", onNodeTap);
+    CY.on("dragfree", "node", onNodeDragFree);
+    CY.on("tap", "edge", onEdgeTap);
+    CY.on("tap", function (evt) {
+      if (evt.target === CY) {
+        document.getElementById("selection-summary").innerHTML = '<span class="empty">Click a node to load track details and play audio.</span>';
+      }
+    });
+  }
+
+  async function onNodeTap(evt) {
+    const node = evt.target;
+    await showNodeSelection(node);
+  }
+
+  async function onNodeDragFree(evt) {
+    const node = evt.target;
+    await showNodeSelection(node);
+  }
+
+  async function showNodeSelection(node) {
+    const data = node.data();
+    node.select();
+    const summary = [
+      `<div class="meta-line"><strong>${escapeHtml(data.label)}</strong></div>`,
+      `<div class="meta-line">rating: ${escapeHtml(data.like_label)} | tags on track: ${escapeHtml(data.tag_count)}</div>`,
+      `<div class="meta-line">sample tags: ${escapeHtml(data.tags_sample || "-")}</div>`,
+    ];
+    document.getElementById("selection-summary").innerHTML = summary.join("");
+    await loadTrackDetails(data.track_id);
+  }
+
+  function onEdgeTap(evt) {
+    const data = evt.target.data();
+    document.getElementById("selection-summary").innerHTML = [
+      `<div class="meta-line"><strong>Edge</strong></div>`,
+      `<div class="meta-line">${escapeHtml(data.source)} ↔ ${escapeHtml(data.target)}</div>`,
+      `<div class="meta-line">shared tags: ${escapeHtml(data.shared_tag_count)}</div>`,
+      `<div class="meta-line">sample: ${escapeHtml(data.shared_tags_sample || "-")}</div>`,
+    ].join("");
+  }
+
+  async function loadTrackDetails(trackId) {
+    const detailsContainer = document.getElementById("selected-track");
+    const player = document.getElementById("selected-track-player");
+    detailsContainer.innerHTML = '<div class="empty">Loading track details…</div>';
+    try {
+      const response = await fetch(`/api/tracks/${encodeURIComponent(trackId)}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const details = await response.json();
+      const title = details.display_title || details.title_new || details.title || details.track_id;
+      const labels = Array.isArray(details.labels) ? details.labels : [];
+      detailsContainer.innerHTML = [
+        `<div id="selected-track-title">${escapeHtml(title)}</div>`,
+        `<div class="meta-line"><strong>Track ID:</strong> ${escapeHtml(details.track_id || trackId)}</div>`,
+        `<div class="meta-line"><strong>Labels:</strong> ${escapeHtml(labels.join(", ") || "-")}</div>`,
+        `<div class="meta-line"><strong>Tags:</strong> ${escapeHtml(details.tags || "-")}</div>`,
+        `<!--<div class="meta-line"><strong>Prompt:</strong> ${escapeHtml(details.prompt || "-")}</div>-->`,
+        `<div class="meta-line"><strong>Notes:</strong> ${escapeHtml(details.notes || "-")}</div>`,
+      ].join("");
+      player.src = `/api/tracks/${encodeURIComponent(trackId)}/audio`;
+      player.load();
+    } catch (error) {
+      detailsContainer.innerHTML = `<div class="empty">Failed to load track details: ${escapeHtml(error.message)}</div>`;
+      player.removeAttribute("src");
+      player.load();
+    }
+  }
+
+  function rerunLayout() {
+    if (!CY) return;
+    CY.layout({
+      name: "cose",
+      fit: true,
+      padding: 20,
+      nodeRepulsion: 28000,
+      idealEdgeLength: 180,
+      edgeElasticity: 120,
+      nestingFactor: 0.8,
+      gravity: 0.3,
+      nodeOverlap: 120,
+      componentSpacing: 140,
+      numIter: 2200,
+      randomize: true,
+      animate: true,
+      animationDuration: 350,
+    }).run();
+  }
+
+  function syncControlLabels() {
+    document.getElementById("min-shared-tags-value").textContent = document.getElementById("min-shared-tags").value;
+    document.getElementById("max-edges-value").textContent = document.getElementById("max-edges").value;
+  }
+
+  function redrawFromControls() {
+    if (!RAW_DATA) return;
+    clearError();
+    const minSharedTags = Number(document.getElementById("min-shared-tags").value || 1);
+    const maxEdges = Number(document.getElementById("max-edges").value || 1000);
+    const minLikeWeight = Number(document.getElementById("min-like").value || 0);
+    FILTERED_DATA = filterData(RAW_DATA, minSharedTags, maxEdges, minLikeWeight);
+    renderGraph(FILTERED_DATA);
+
+    const dist = likeDistributionText(RAW_DATA.stats.like_distribution || {});
+    setStats([
+      `<span>Tracks with tags: <strong style="color:#d4d4d8">${RAW_DATA.stats.total_tracks_with_tags}</strong></span>`,
+      `<span>Visible nodes: <strong style="color:#d4d4d8">${FILTERED_DATA.nodes.length}</strong></span>`,
+      `<span>Visible edges: <strong style="color:#d4d4d8">${FILTERED_DATA.edges.length}</strong></span>`,
+      dist ? `<span>Rating distribution: ${escapeHtml(dist)}</span>` : "",
+    ]);
+
+    if (!FILTERED_DATA.edges.length && FILTERED_DATA.nodes.length) {
+      showError("No edges remain for the current filters. Lower Min shared tags or increase Max edges.");
+    }
+  }
+
+  async function init() {
+    clearError();
+    try {
+      const response = await fetch("/viz/api/tag-network");
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      RAW_DATA = await response.json();
+    } catch (error) {
+      showError(`Failed to load tag network data: ${error.message}`);
+      setStats(["<span>No data loaded.</span>"]);
+      return;
+    }
+
+    if (!RAW_DATA.nodes || !RAW_DATA.nodes.length) {
+      showError("No tagged tracks available. Fetch remote metadata for more tracks first.");
+      setStats(["<span>No graph data available.</span>"]);
+      return;
+    }
+
+    const maxEdgesInput = document.getElementById("max-edges");
+    const maxEdgesDefault = Math.min(400, Math.max(100, Number(RAW_DATA.config.max_edges || 400)));
+    maxEdgesInput.max = String(Math.max(maxEdgesDefault, Number(RAW_DATA.edges.length || maxEdgesDefault)));
+    maxEdgesInput.value = String(Math.min(maxEdgesDefault, Number(maxEdgesInput.max)));
+    syncControlLabels();
+
+    document.getElementById("min-shared-tags").addEventListener("input", () => {
+      syncControlLabels();
+      redrawFromControls();
+    });
+    document.getElementById("max-edges").addEventListener("input", () => {
+      syncControlLabels();
+      redrawFromControls();
+    });
+    document.getElementById("min-like").addEventListener("change", redrawFromControls);
+    document.getElementById("rerun-layout").addEventListener("click", rerunLayout);
+
+    redrawFromControls();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

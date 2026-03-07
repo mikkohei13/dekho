@@ -31,8 +31,13 @@ def _query_tracks_with_tags_and_likes() -> list[dict]:
             SELECT
                 trd.track_id,
                 trd.tags,
+                COALESCE(NULLIF(TRIM(tud.title_new), ''), NULLIF(TRIM(tfd.title), ''), trd.track_id) AS display_title,
                 ld.key AS like_key
             FROM track_remote_data AS trd
+            LEFT JOIN tracks_file_data AS tfd
+                ON tfd.track_id = trd.track_id
+            LEFT JOIN track_user_data AS tud
+                ON tud.track_id = trd.track_id
             LEFT JOIN track_user_data_labels AS tul
                 ON tul.track_id = trd.track_id
             LEFT JOIN label_definitions AS ld
@@ -47,10 +52,11 @@ def _query_tracks_with_tags_and_likes() -> list[dict]:
             tracks[tid] = {
                 "track_id": tid,
                 "tags": str(row[1]),
-                "like_key": str(row[2]) if row[2] else None,
+                "display_title": str(row[2]) if row[2] else tid,
+                "like_key": str(row[3]) if row[3] else None,
             }
-        elif row[2] is not None:
-            tracks[tid]["like_key"] = str(row[2])
+        elif row[3] is not None:
+            tracks[tid]["like_key"] = str(row[3])
     return list(tracks.values())
 
 
@@ -146,11 +152,126 @@ def _build_cooccurrence_data() -> dict:
     }
 
 
+def _build_tag_network_data() -> dict:
+    tracks = _query_tracks_with_tags_and_likes()
+
+    min_shared_tags = 1
+    max_nodes = 180
+    max_edges = 1800
+    max_shared_tags_sample = 8
+
+    enriched_tracks: list[dict] = []
+    like_dist: dict[str, int] = {}
+    for track in tracks:
+        parsed_tags = sorted(set(_parse_tags(track["tags"])))
+        if not parsed_tags:
+            continue
+
+        like_key = track["like_key"] or "unrated"
+        like_weight = LIKE_WEIGHTS.get(track["like_key"], DEFAULT_WEIGHT) if track["like_key"] else DEFAULT_WEIGHT
+        like_dist[like_key] = like_dist.get(like_key, 0) + 1
+        enriched_tracks.append(
+            {
+                "track_id": track["track_id"],
+                "display_title": track.get("display_title") or track["track_id"],
+                "like_key": like_key,
+                "like_weight": like_weight,
+                "tags": parsed_tags,
+                "tag_set": set(parsed_tags),
+                "tag_count": len(parsed_tags),
+            }
+        )
+
+    enriched_tracks.sort(
+        key=lambda t: (
+            -float(t["like_weight"]),
+            -int(t["tag_count"]),
+            str(t["display_title"]).lower(),
+            str(t["track_id"]),
+        )
+    )
+    if len(enriched_tracks) > max_nodes:
+        enriched_tracks = enriched_tracks[:max_nodes]
+
+    nodes = [
+        {
+            "id": track["track_id"],
+            "track_id": track["track_id"],
+            "label": track["display_title"],
+            "like_key": track["like_key"],
+            "like_weight": track["like_weight"],
+            "tag_count": track["tag_count"],
+            "tags_sample": track["tags"][:max_shared_tags_sample],
+        }
+        for track in enriched_tracks
+    ]
+
+    edges: list[dict] = []
+    for i in range(len(enriched_tracks)):
+        left = enriched_tracks[i]
+        left_tags = left["tag_set"]
+        for j in range(i + 1, len(enriched_tracks)):
+            right = enriched_tracks[j]
+            shared_tags = sorted(left_tags & right["tag_set"])
+            shared_tag_count = len(shared_tags)
+            if shared_tag_count < min_shared_tags:
+                continue
+
+            mean_like_weight = (float(left["like_weight"]) + float(right["like_weight"])) / 2.0
+            weighted_shared_score = float(shared_tag_count) * mean_like_weight
+            edges.append(
+                {
+                    "id": f"{left['track_id']}__{right['track_id']}",
+                    "source": left["track_id"],
+                    "target": right["track_id"],
+                    "shared_tag_count": shared_tag_count,
+                    "weighted_shared_score": round(weighted_shared_score, 3),
+                    "shared_tags_sample": shared_tags[:max_shared_tags_sample],
+                }
+            )
+
+    edges.sort(
+        key=lambda e: (
+            -int(e["shared_tag_count"]),
+            -float(e["weighted_shared_score"]),
+            str(e["id"]),
+        )
+    )
+    if len(edges) > max_edges:
+        edges = edges[:max_edges]
+
+    return {
+        "nodes": nodes,
+        "edges": edges,
+        "stats": {
+            "total_tracks_with_tags": len(tracks),
+            "nodes_count": len(nodes),
+            "edges_count": len(edges),
+            "like_distribution": like_dist,
+        },
+        "config": {
+            "min_shared_tags": min_shared_tags,
+            "max_nodes": max_nodes,
+            "max_edges": max_edges,
+        },
+    }
+
+
 @viz_bp.get("/tag-heatmap")
 def tag_heatmap():
     return render_template("viz_tag_heatmap.html")
 
 
+@viz_bp.get("/tag-network")
+def tag_network():
+    return render_template("viz_tag_network.html")
+
+
 @viz_bp.get("/api/tag-cooccurrence")
 def tag_cooccurrence_api():
     return jsonify(_build_cooccurrence_data())
+
+
+@viz_bp.get("/api/tag-network")
+def tag_network_api():
+    return jsonify(_build_tag_network_data())
