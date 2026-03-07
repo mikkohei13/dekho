@@ -74,6 +74,10 @@ uv run dev_db_summary.py
 
 ## Upcoming features (keep these in mind but **don't develop unless asked**)
 
+- State with Alpine.js?
+- Disable Scan button when scanning is in progress
+- Disable pressing enter when editing track details
+- Label: make cover
 - Show player only when a track is selected
 - Styling
     - track header fix

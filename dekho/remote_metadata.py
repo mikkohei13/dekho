@@ -25,8 +25,10 @@ def _read_html(url: str) -> str:
         return response.read().decode("utf-8", errors="replace")
 
 
-TEXT_REF_RE = re.compile(r"^(\d+):T[0-9a-fA-F]+,$")
-TEXT_REF_INLINE_RE = re.compile(r"^(\d+):T[0-9a-fA-F]+,(.+)$", re.DOTALL)
+TEXT_REF_RE = re.compile(r"^([0-9A-Za-z]+):T[0-9a-fA-F]+,$")
+TEXT_REF_INLINE_RE = re.compile(r"^([0-9A-Za-z]+):T[0-9a-fA-F]+,(.+)$", re.DOTALL)
+PROMPT_REF_RE = re.compile(r"^\$([0-9A-Za-z]+)$")
+STANZA_MARKER_RE = re.compile(r"(?:\[[^\]\n]{1,40}\]|\([^\)\n]{1,40}\))")
 CONTENT_SIGNAL_KEYS = {
     "prompt",
     "tags",
@@ -111,9 +113,83 @@ def _extract_from_decoded_chunk(
 def _resolve_prompt_reference(prompt: str | None, text_refs: dict[str, str]) -> str | None:
     if not isinstance(prompt, str):
         return prompt
-    if prompt.startswith("$") and prompt[1:].isdigit():
-        return text_refs.get(prompt[1:], prompt)
+    match = PROMPT_REF_RE.match(prompt.strip())
+    if match:
+        return text_refs.get(match.group(1), prompt)
     return prompt
+
+
+def _is_invalid_prompt(prompt: str | None) -> bool:
+    if not isinstance(prompt, str):
+        return False
+    stripped = prompt.strip()
+    return stripped.startswith("$") or len(stripped) < 5
+
+
+def _lyrics_candidate_score(text: str) -> int:
+    stripped = text.strip()
+    if not stripped:
+        return 0
+    markers = len(STANZA_MARKER_RE.findall(stripped))
+    newlines = stripped.count("\n")
+    length = len(stripped)
+    score = 0
+    if markers >= 2:
+        score += 5
+    elif markers == 1:
+        score += 2
+    if newlines >= 4:
+        score += 4
+    elif newlines >= 2:
+        score += 2
+    if length >= 250:
+        score += 4
+    elif length >= 120:
+        score += 2
+    elif length >= 60:
+        score += 1
+    return score
+
+
+def _find_lyrics_like_text(
+    decoded_chunks: list[str], text_refs: dict[str, str]
+) -> str | None:
+    candidates: list[str] = []
+    seen: set[str] = set()
+    for value in text_refs.values():
+        stripped = value.strip()
+        if stripped and stripped not in seen:
+            seen.add(stripped)
+            candidates.append(stripped)
+    for chunk in decoded_chunks:
+        stripped = chunk.strip()
+        if (
+            stripped
+            and ":" not in stripped
+            and stripped not in seen
+            and not stripped.startswith("self.__next_f.push")
+        ):
+            seen.add(stripped)
+            candidates.append(stripped)
+
+    best_text: str | None = None
+    best_score = -1
+    for candidate in candidates:
+        score = _lyrics_candidate_score(candidate)
+        if score > best_score:
+            best_score = score
+            best_text = candidate
+
+    if best_text is None:
+        return None
+
+    best_markers = len(STANZA_MARKER_RE.findall(best_text))
+    best_newlines = best_text.count("\n")
+    best_length = len(best_text)
+    # Keep this intentionally conservative to avoid false positives.
+    if best_score >= 8 and best_newlines >= 2 and best_length >= 80 and best_markers >= 1:
+        return best_text
+    return None
 
 
 def _get_first_present_value(
@@ -140,10 +216,12 @@ def fetch_suno_track_metadata(track_url: str) -> dict[str, str | bool | None]:
     pending_text_ref_id: str | None = None
     best_content_candidate: dict[str, Any] | None = None
     best_model_candidate: dict[str, Any] | None = None
+    decoded_chunks: list[str] = []
 
     for match in PUSH_RE.finditer(html):
         escaped = match.group(1)
         decoded = json.loads(f'"{escaped}"')
+        decoded_chunks.append(decoded)
         content_candidate, model_candidate, refs, pending_text_ref_id = _extract_from_decoded_chunk(
             decoded, pending_text_ref_id
         )
@@ -185,6 +263,9 @@ def fetch_suno_track_metadata(track_url: str) -> dict[str, str | bool | None]:
     resolved_prompt = _resolve_prompt_reference(
         str(prompt) if prompt is not None else None, text_refs
     )
+    if _is_invalid_prompt(resolved_prompt):
+        fallback_prompt = _find_lyrics_like_text(decoded_chunks, text_refs)
+        resolved_prompt = fallback_prompt if fallback_prompt is not None else "failed"
     has_cover_clip_id = (
         "cover_clip_id" in metadata_node or "cover_clip_id" in primary_candidate
     )
