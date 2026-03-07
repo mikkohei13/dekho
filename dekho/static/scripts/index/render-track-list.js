@@ -332,7 +332,7 @@ export function renderQueueDrawer({
   queueNotice,
   queueNoticeText,
   selectedTrackPlayer,
-  playbackMode,
+  activeTrackId,
 }) {
   if (!(queueList instanceof HTMLElement)) {
     return;
@@ -357,17 +357,19 @@ export function renderQueueDrawer({
   const playingTrackId = selectedTrackPlayer instanceof HTMLAudioElement
     ? (selectedTrackPlayer.dataset.trackId || "")
     : "";
+  const isPlayerRunning = selectedTrackPlayer instanceof HTMLAudioElement
+    ? !selectedTrackPlayer.paused
+    : false;
   const listHtml = queueTrackIds.map((trackId, index) => {
     const item = getTrackItemById(trackId);
     const title = getTrackItemDisplayTitle(item);
     const isQueuedCurrent = index === queueIndex;
-    const isPlaying = playbackMode === "queue" && playingTrackId === trackId;
+    const isPlaying = isPlayerRunning && playingTrackId === trackId;
+    const isShowing = activeTrackId === trackId;
     return `
       <li>
-        <button
-          type="button"
+        <div
           class="queue-track-item${isQueuedCurrent ? " is-current" : ""}${isPlaying ? " is-playing" : ""}"
-          data-queue-index="${index}"
           data-track-id="${escapeHtml(trackId)}"
         >
           <img
@@ -377,8 +379,31 @@ export function renderQueueDrawer({
             height="34"
             loading="lazy"
           >
-          <span class="queue-track-title">${escapeHtml(title)}</span>
-        </button>
+          <div class="queue-track-main">
+            <span class="queue-track-title">${escapeHtml(title)}</span>
+            <div class="queue-track-actions">
+              ${isPlaying ? "" : `
+                <button
+                  type="button"
+                  class="queue-track-action-btn queue-track-play-btn"
+                  data-queue-index="${index}"
+                  data-track-id="${escapeHtml(trackId)}"
+                >
+                  ▶ Play
+                </button>
+              `}
+              ${isShowing ? "" : `
+                <button
+                  type="button"
+                  class="queue-track-action-btn queue-track-show-btn"
+                  data-track-id="${escapeHtml(trackId)}"
+                >
+                  Show
+                </button>
+              `}
+            </div>
+          </div>
+        </div>
       </li>
     `;
   }).join("");

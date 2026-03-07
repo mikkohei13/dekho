@@ -23,6 +23,7 @@ import {
   updatePersistentTrackTitleIfPlaying,
 } from "./render-track-details.js";
 import {
+  confirmDiscardUnsavedChanges,
   hasQueueTracks,
   setQueueSnapshot,
   createTrackLabelMap,
@@ -63,12 +64,27 @@ const tracksLabelCatalog = readLabelCatalog();
 const trackLabelByKey = createTrackLabelMap(tracksLabelCatalog);
 const state = createUiState();
 
+const TRACK_SAVE_STATUS_CLASSES = [
+  "track-user-data-save-status--saved",
+  "track-user-data-save-status--unsaved",
+];
+
 function setTrackUserDataSaveStatus(statusText) {
   const saveStatus = document.getElementById("track-user-data-save-status");
   if (!(saveStatus instanceof HTMLElement)) {
     return;
   }
   saveStatus.textContent = statusText;
+  saveStatus.classList.remove(...TRACK_SAVE_STATUS_CLASSES);
+
+  const normalizedStatus = String(statusText || "").trim().toLowerCase();
+  if (normalizedStatus === "saved") {
+    saveStatus.classList.add("track-user-data-save-status--saved");
+    return;
+  }
+  if (normalizedStatus === "unsaved changes") {
+    saveStatus.classList.add("track-user-data-save-status--unsaved");
+  }
 }
 
 function renderFilterOptions() {
@@ -153,7 +169,7 @@ function renderQueueState() {
     queueNotice,
     queueNoticeText: state.queueNotice,
     selectedTrackPlayer,
-    playbackMode: state.playbackMode,
+    activeTrackId: state.activeTrackId,
   });
   updateQueueButtonsState();
 }
@@ -282,6 +298,17 @@ function moveQueue(delta) {
   playQueueAtIndex(state.queueIndex + delta);
 }
 
+function showQueueTrackInContentPanel(trackId) {
+  const trackItem = getTrackItemById(trackId);
+  if (!(trackItem instanceof HTMLElement)) {
+    return;
+  }
+  if (!confirmDiscardUnsavedChanges(state, trackId)) {
+    return;
+  }
+  loadTrackDetails(trackId, trackItem);
+}
+
 async function loadTrackDetails(trackId, item) {
   trackItems.forEach((trackItem) => trackItem.classList.remove("is-active"));
   item.classList.add("is-active");
@@ -388,7 +415,8 @@ bindQueuePanelEvents({
   onToggleQueueDrawer: toggleQueueDrawer,
   onRecreateQueueFromFilter: recreateQueueFromFilter,
   onResumeQueue: resumeQueue,
-  onSelectQueueIndex: playQueueAtIndex,
+  onPlayQueueIndex: playQueueAtIndex,
+  onShowQueueTrack: showQueueTrackInContentPanel,
 });
 bindPersistentQueueControls({
   previousQueueTrackButton,

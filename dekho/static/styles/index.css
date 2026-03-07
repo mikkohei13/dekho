@@ -380,17 +380,11 @@ body {
   align-items: center;
   gap: 0.55rem;
   padding: 0.4rem 0.28rem;
-  border: 0;
   border-bottom: 1px solid var(--border);
-  color: var(--text);
   background: rgba(22, 31, 50, 0.35);
-  text-align: left;
-  cursor: pointer;
 }
 
-.queue-track-item:hover,
-.queue-track-item:focus-visible {
-  outline: none;
+.queue-track-item:hover {
   background: rgba(121, 168, 255, 0.16);
 }
 
@@ -411,6 +405,44 @@ body {
 
 .queue-track-title {
   overflow-wrap: anywhere;
+}
+
+.queue-track-main {
+  display: flex;
+  min-width: 0;
+  width: 100%;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: space-between;
+}
+
+.queue-track-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.queue-track-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(147, 164, 197, 0.28);
+  border-radius: 8px;
+  padding: 0.26rem 0.52rem;
+  color: var(--text);
+  background: rgba(13, 16, 22, 0.82);
+  cursor: pointer;
+  font-size: 0.8rem;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.queue-track-action-btn:hover,
+.queue-track-action-btn:focus-visible {
+  outline: none;
+  border-color: rgba(182, 199, 235, 0.42);
+  filter: brightness(1.08);
 }
 
 .track-items {
@@ -805,6 +837,14 @@ body {
   align-items: center;
   gap: 0.65rem;
   margin-top: 0.25rem;
+}
+
+.track-user-data-save-status--saved {
+  color: #009900;
+}
+
+.track-user-data-save-status--unsaved {
+  color: #990000;
 }
 
 #save-track-user-data-btn:disabled {

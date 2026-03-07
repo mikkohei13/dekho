@@ -171,7 +171,10 @@ export function renderDetails(data, contentPanelBody) {
           </div>
           <div class="track-user-data-actions">
             <button id="save-track-user-data-btn" type="button">Save</button>
-            <span id="track-user-data-save-status" class="track-user-data-save-status">saved</span>
+            <span
+              id="track-user-data-save-status"
+              class="track-user-data-save-status track-user-data-save-status--saved"
+            >saved</span>
             <span id="track-user-data-error" class="track-user-data-error"></span>
           </div>
         </form>

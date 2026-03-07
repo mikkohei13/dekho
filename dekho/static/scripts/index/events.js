@@ -227,7 +227,8 @@ export function bindQueuePanelEvents({
   onToggleQueueDrawer,
   onRecreateQueueFromFilter,
   onResumeQueue,
-  onSelectQueueIndex,
+  onPlayQueueIndex,
+  onShowQueueTrack,
 }) {
   if (!(tracksPanel instanceof HTMLElement)) {
     return;
@@ -249,15 +250,23 @@ export function bindQueuePanelEvents({
       onResumeQueue();
       return;
     }
-    const queueItemButton = target.closest(".queue-track-item");
-    if (!(queueItemButton instanceof HTMLButtonElement)) {
+    const playButton = target.closest(".queue-track-play-btn");
+    if (playButton instanceof HTMLButtonElement) {
+      const index = Number.parseInt(playButton.dataset.queueIndex || "", 10);
+      if (!Number.isFinite(index)) {
+        return;
+      }
+      onPlayQueueIndex(index);
       return;
     }
-    const index = Number.parseInt(queueItemButton.dataset.queueIndex || "", 10);
-    if (!Number.isFinite(index)) {
-      return;
+    const showButton = target.closest(".queue-track-show-btn");
+    if (showButton instanceof HTMLButtonElement) {
+      const trackId = showButton.dataset.trackId || "";
+      if (!trackId) {
+        return;
+      }
+      onShowQueueTrack(trackId);
     }
-    onSelectQueueIndex(index);
   });
 }
 
