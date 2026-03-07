@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tag Co-occurrence Heatmap – Dekho</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0e0e12;
+      color: #d4d4d8;
+      min-height: 100vh;
+    }
+
+    .page-header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid #27272a;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .page-header h1 { font-size: 1.25rem; font-weight: 600; }
+    .back-link {
+      color: #71717a;
+      text-decoration: none;
+      font-size: 0.875rem;
+    }
+    .back-link:hover { color: #a1a1aa; }
+
+    .controls {
+      padding: 1rem 1.5rem;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+      border-bottom: 1px solid #27272a;
+    }
+    .controls label { font-size: 0.875rem; color: #a1a1aa; }
+    .controls select, .controls input[type="range"] {
+      background: #18181b;
+      color: #d4d4d8;
+      border: 1px solid #3f3f46;
+      border-radius: 4px;
+      padding: 0.35rem 0.5rem;
+      font-size: 0.875rem;
+    }
+    .controls select:focus, .controls input:focus { outline: 1px solid #6366f1; }
+
+    .stats {
+      padding: 0.75rem 1.5rem;
+      font-size: 0.8rem;
+      color: #71717a;
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .stats span { white-space: nowrap; }
+
+    #heatmap-container {
+      width: 100%;
+      padding: 0.5rem;
+      display: flex;
+      justify-content: center;
+    }
+    #heatmap {
+      width: 100%;
+      max-width: 1100px;
+      min-height: 700px;
+    }
+
+    .legend {
+      padding: 1rem 1.5rem;
+      font-size: 0.8rem;
+      color: #71717a;
+      max-width: 900px;
+    }
+    .legend h3 { color: #a1a1aa; margin-bottom: 0.5rem; font-size: 0.875rem; }
+    .legend p { margin-bottom: 0.35rem; line-height: 1.5; }
+
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 400px;
+      color: #71717a;
+      font-size: 1rem;
+    }
+    .error { color: #ef4444; padding: 2rem; text-align: center; }
+  </style>
+</head>
+<body>
+  <header class="page-header">
+    <a class="back-link" href="/">← Back to Dekho</a>
+    <h1>Tag Co-occurrence Heatmap</h1>
+  </header>
+
+  <div class="controls">
+    <label>
+      View:
+      <select id="mode-select">
+        <option value="weighted">Co-occurrence (like-weighted)</option>
+        <option value="raw">Co-occurrence (raw count)</option>
+        <option value="surprise">Surprise (log₂ observed/expected)</option>
+      </select>
+    </label>
+    <label>
+      Max tags:
+      <input type="range" id="tag-limit" min="8" max="50" value="30">
+      <span id="tag-limit-value">30</span>
+    </label>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div id="heatmap-container">
+    <div id="heatmap"><div class="loading">Loading data…</div></div>
+  </div>
+
+  <div class="legend">
+    <h3>Reading the heatmap</h3>
+    <p><strong>Co-occurrence (like-weighted)</strong> — Cell brightness shows how often two tags appear on the same track, weighted by user like rating (like3 = 4×, like2 = 3×, like1 = 2×, like0 = 1×, not-like = 0×, unrated = 1×). Diagonal shows each tag's total weighted frequency.</p>
+    <p><strong>Co-occurrence (raw count)</strong> — Simple count of tracks where both tags appear together.</p>
+    <p><strong>Surprise (log₂ observed/expected)</strong> — Positive values (warm colors) mean the pair appears together <em>more often</em> than expected by chance — an unexpected or distinctive combination. Negative values (cool colors) mean the pair appears <em>less often</em> than expected — tags that tend to avoid each other.</p>
+  </div>
+
+<script>
+(function () {
+  const PLOT_BG = '#0e0e12';
+  const PAPER_BG = '#0e0e12';
+  const GRID_COLOR = '#27272a';
+  const FONT_COLOR = '#a1a1aa';
+
+  let DATA = null;
+
+  async function fetchData() {
+    const res = await fetch('/viz/api/tag-cooccurrence');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
+
+  function renderStats(data) {
+    const el = document.getElementById('stats');
+    const parts = [
+      `<span>Tracks with tags: <strong style="color:#d4d4d8">${data.total_tracks}</strong></span>`,
+      `<span>Unique tags shown: <strong style="color:#d4d4d8">${data.tags.length}</strong></span>`,
+    ];
+    const likeLabels = {
+      'like.like3': 'like3',
+      'like.like2': 'like2',
+      'like.like1': 'like1',
+      'like.like0': 'like0',
+      'like.not_like': 'not-like',
+      'unrated': 'unrated',
+    };
+    const dist = data.like_distribution || {};
+    const distParts = Object.entries(likeLabels)
+      .filter(([k]) => dist[k])
+      .map(([k, label]) => `${label}: ${dist[k]}`);
+    if (distParts.length) {
+      parts.push(`<span>Rating distribution: ${distParts.join(', ')}</span>`);
+    }
+    el.innerHTML = parts.join('');
+  }
+
+  function getSlice(data, limit) {
+    const n = Math.min(limit, data.tags.length);
+    const tags = data.tags.slice(0, n);
+    const slice = (mat) => mat.slice(0, n).map(row => row.slice(0, n));
+    return { tags, matrix: slice(data.matrix), raw_counts: slice(data.raw_counts), surprise: slice(data.surprise) };
+  }
+
+  function render(data, mode, limit) {
+    const s = getSlice(data, limit);
+    const n = s.tags.length;
+
+    let z, colorscale, zmid, zLabel, hoverTemplate;
+
+    if (mode === 'weighted') {
+      z = s.matrix;
+      colorscale = [
+        [0, '#0e0e12'],
+        [0.15, '#312e81'],
+        [0.35, '#4f46e5'],
+        [0.55, '#818cf8'],
+        [0.75, '#c4b5fd'],
+        [1, '#f5f3ff'],
+      ];
+      zmid = undefined;
+      zLabel = 'Weighted co-occurrence';
+      hoverTemplate = '%{x} + %{y}<br>Weighted: %{z:.1f}<extra></extra>';
+    } else if (mode === 'raw') {
+      z = s.raw_counts;
+      colorscale = [
+        [0, '#0e0e12'],
+        [0.15, '#1e3a5f'],
+        [0.35, '#2563eb'],
+        [0.55, '#60a5fa'],
+        [0.75, '#93c5fd'],
+        [1, '#eff6ff'],
+      ];
+      zmid = undefined;
+      zLabel = 'Track count';
+      hoverTemplate = '%{x} + %{y}<br>Tracks: %{z}<extra></extra>';
+    } else {
+      z = s.surprise;
+      colorscale = [
+        [0, '#1e3a8a'],
+        [0.3, '#3b82f6'],
+        [0.45, '#18181b'],
+        [0.55, '#18181b'],
+        [0.7, '#f97316'],
+        [1, '#fbbf24'],
+      ];
+      zmid = 0;
+      zLabel = 'Surprise (log₂)';
+      hoverTemplate = '%{x} + %{y}<br>Surprise: %{z:.2f}<extra></extra>';
+    }
+
+    const trace = {
+      z: z,
+      x: s.tags,
+      y: s.tags,
+      type: 'heatmap',
+      colorscale: colorscale,
+      zmid: zmid,
+      hoverongaps: false,
+      hovertemplate: hoverTemplate,
+      colorbar: {
+        title: { text: zLabel, font: { color: FONT_COLOR, size: 11 } },
+        tickfont: { color: FONT_COLOR, size: 10 },
+        outlinewidth: 0,
+        thickness: 14,
+      },
+      xgap: 1,
+      ygap: 1,
+    };
+
+    const size = Math.max(600, n * 22 + 160);
+
+    const layout = {
+      width: Math.min(size, 1100),
+      height: Math.min(size, 1000),
+      margin: { l: 140, r: 60, t: 30, b: 140 },
+      paper_bgcolor: PAPER_BG,
+      plot_bgcolor: PLOT_BG,
+      font: { color: FONT_COLOR, family: 'system-ui, sans-serif', size: 11 },
+      xaxis: {
+        tickangle: -45,
+        tickfont: { size: 10, color: FONT_COLOR },
+        gridcolor: GRID_COLOR,
+        side: 'bottom',
+      },
+      yaxis: {
+        tickfont: { size: 10, color: FONT_COLOR },
+        gridcolor: GRID_COLOR,
+        autorange: 'reversed',
+      },
+    };
+
+    Plotly.react('heatmap', [trace], layout, { responsive: true, displayModeBar: true });
+  }
+
+  async function init() {
+    try {
+      DATA = await fetchData();
+    } catch (e) {
+      document.getElementById('heatmap').innerHTML =
+        `<div class="error">Failed to load data: ${e.message}</div>`;
+      return;
+    }
+
+    if (!DATA.tags || DATA.tags.length === 0) {
+      document.getElementById('heatmap').innerHTML =
+        '<div class="error">No tag data available. Fetch remote metadata for some tracks first.</div>';
+      return;
+    }
+
+    renderStats(DATA);
+
+    const modeSelect = document.getElementById('mode-select');
+    const tagLimit = document.getElementById('tag-limit');
+    const tagLimitValue = document.getElementById('tag-limit-value');
+
+    tagLimit.max = Math.min(50, DATA.tags.length);
+    tagLimit.value = Math.min(30, DATA.tags.length);
+    tagLimitValue.textContent = tagLimit.value;
+
+    function redraw() {
+      render(DATA, modeSelect.value, parseInt(tagLimit.value, 10));
+    }
+
+    modeSelect.addEventListener('change', redraw);
+    tagLimit.addEventListener('input', () => {
+      tagLimitValue.textContent = tagLimit.value;
+      redraw();
+    });
+
+    redraw();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

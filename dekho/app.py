@@ -28,11 +28,13 @@ from .db import (
 from .labels import get_label_catalog, normalize_label_keys
 from .remote_metadata import fetch_suno_track_metadata
 from .scan import run_scan
+from .visualizations import viz_bp
 
 
 def create_app() -> Flask:
     app = Flask(__name__)
     init_db()
+    app.register_blueprint(viz_bp)
 
     def _track_not_found_response():
         return jsonify({"error": "Track not found"}), 404
