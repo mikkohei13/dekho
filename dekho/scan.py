@@ -1,5 +1,19 @@
 from __future__ import annotations
 
+"""Filesystem scan pipeline for importing music into Dekho.
+
+Inputs:
+- A root `music` directory path.
+
+Outputs:
+- Structured scan summary with counts and warning groups.
+
+Side effects:
+- Moves duplicate files into `./music_duplicates`.
+- Upserts tracks into SQLite.
+- Writes cover and spectrogram artifacts when available.
+"""
+
 import os
 import shutil
 import subprocess
@@ -185,23 +199,21 @@ def export_track_spectrogram_image(track_id: str, file_path: Path) -> None:
     plt.close(figure)
 
 
-def run_scan(music_dir: Path) -> dict[str, object]:
-    database_backup_path = backup_database_if_exists()
-    music_root = music_dir.resolve()
-    duplicates_dir = Path("./music_duplicates")
-    all_mp3_files: list[Path] = []
-    if music_dir.exists():
-        all_mp3_files = sorted(
-            file_path
-            for file_path in music_dir.rglob("*")
-            if file_path.is_file() and file_path.suffix.casefold() == ".mp3"
-        )
+def _discover_mp3_files(music_dir: Path) -> list[Path]:
+    if not music_dir.exists():
+        return []
+    return sorted(
+        file_path
+        for file_path in music_dir.rglob("*")
+        if file_path.is_file() and file_path.suffix.casefold() == ".mp3"
+    )
 
+
+def _group_track_files(
+    all_mp3_files: list[Path], music_root: Path
+) -> tuple[dict[str, list[TrackFile]], list[dict[str, str]]]:
     grouped_track_files: dict[str, list[TrackFile]] = defaultdict(list)
-    scanned_tracks: list[dict[str, str]] = []
     missing_identifier_files: list[dict[str, str]] = []
-    all_music_path_keys = {normalize_compare_key(path) for path in all_mp3_files}
-
     for file_path in all_mp3_files:
         file_metadata = extract_file_metadata(file_path)
         track_id = file_metadata.get("track_id")
@@ -220,20 +232,25 @@ def run_scan(music_dir: Path) -> dict[str, object]:
                 filepath_compare_key=normalize_compare_key(resolved),
             )
         )
+    return grouped_track_files, missing_identifier_files
 
-    db_rows = get_all_tracks_file_data()
-    db_by_id = {str(row["track_id"]): row for row in db_rows if row["track_id"]}
 
+def _process_grouped_tracks(
+    grouped_track_files: dict[str, list[TrackFile]],
+    db_by_id: dict[str, dict[str, object]],
+    music_root: Path,
+    duplicates_dir: Path,
+) -> tuple[list[dict[str, str]], list[dict[str, str]], list[dict[str, str]], set[str]]:
+    scanned_tracks: list[dict[str, str]] = []
     duplicate_warnings: list[dict[str, str]] = []
     renamed_path_updates: list[dict[str, str]] = []
-    missing_from_folder: list[dict[str, str]] = []
-
     scanned_track_ids: set[str] = set()
 
     for track_id in sorted(grouped_track_files):
         candidates = grouped_track_files[track_id]
         db_filepath = db_by_id.get(track_id, {}).get("filepath")
-        canonical_file = _pick_canonical_file(candidates, db_filepath, music_root)
+        db_filepath_value = str(db_filepath) if isinstance(db_filepath, str) else None
+        canonical_file = _pick_canonical_file(candidates, db_filepath_value, music_root)
         scanned_track_ids.add(track_id)
 
         for candidate in candidates:
@@ -250,14 +267,14 @@ def run_scan(music_dir: Path) -> dict[str, object]:
             )
 
         if (
-            db_filepath
-            and normalize_compare_key(db_filepath, base_dir=music_root)
+            db_filepath_value
+            and normalize_compare_key(db_filepath_value, base_dir=music_root)
             != canonical_file.filepath_compare_key
         ):
             renamed_path_updates.append(
                 {
                     "track_id": track_id,
-                    "old_filepath": str(db_filepath),
+                    "old_filepath": db_filepath_value,
                     "new_filepath": to_storage_filepath(
                         canonical_file.filepath_resolved, music_root
                     ),
@@ -284,6 +301,7 @@ def run_scan(music_dir: Path) -> dict[str, object]:
         except Exception:
             # Spectrogram generation should not break the scan pipeline.
             pass
+
         scanned_tracks.append(
             {
                 "track_id": track_id,
@@ -292,6 +310,15 @@ def run_scan(music_dir: Path) -> dict[str, object]:
             }
         )
 
+    return scanned_tracks, duplicate_warnings, renamed_path_updates, scanned_track_ids
+
+
+def _collect_missing_from_folder(
+    music_root: Path,
+    all_music_path_keys: set[str],
+    scanned_track_ids: set[str],
+) -> list[dict[str, str]]:
+    missing_from_folder: list[dict[str, str]] = []
     db_rows_after_scan = get_all_tracks_file_data()
     for row in db_rows_after_scan:
         row_track_id = str(row["track_id"]) if row["track_id"] else ""
@@ -318,6 +345,34 @@ def run_scan(music_dir: Path) -> dict[str, object]:
                 "missing_path": "yes" if not has_path_in_scan else "no",
             }
         )
+    return missing_from_folder
+
+
+def run_scan(music_dir: Path) -> dict[str, object]:
+    database_backup_path = backup_database_if_exists()
+    music_root = music_dir.resolve()
+    duplicates_dir = Path("./music_duplicates")
+    all_mp3_files = _discover_mp3_files(music_dir)
+    grouped_track_files, missing_identifier_files = _group_track_files(
+        all_mp3_files, music_root
+    )
+    all_music_path_keys = {normalize_compare_key(path) for path in all_mp3_files}
+
+    db_rows = get_all_tracks_file_data()
+    db_by_id = {str(row["track_id"]): row for row in db_rows if row["track_id"]}
+    scanned_tracks, duplicate_warnings, renamed_path_updates, scanned_track_ids = (
+        _process_grouped_tracks(
+            grouped_track_files=grouped_track_files,
+            db_by_id=db_by_id,
+            music_root=music_root,
+            duplicates_dir=duplicates_dir,
+        )
+    )
+    missing_from_folder = _collect_missing_from_folder(
+        music_root=music_root,
+        all_music_path_keys=all_music_path_keys,
+        scanned_track_ids=scanned_track_ids,
+    )
 
     return {
         "database_backup_path": database_backup_path,

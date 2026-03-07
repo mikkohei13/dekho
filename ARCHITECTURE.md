@@ -59,10 +59,50 @@ Metadata are fetched server-side from public Suno track pages by parsing Next.js
 
 ## Track list synchronization
 
-- The left sidebar (`#tracks-list`) is updated through one client-side projection function: `renderTrackListItem(trackId, data)` in `dekho/templates/index.html`.
+- The left sidebar (`#tracks-list`) is updated through one client-side projection function: `renderTrackListItem(trackId, data)` in `dekho/static/scripts/index/render-track-list.js`.
 - `renderTrackListItem` is the single path used after:
   - loading track details (`GET /api/tracks/<track_id>`),
   - saving user data (`POST /api/tracks/<track_id>/user-data`),
   - fetching Suno metadata (`POST /api/tracks/<track_id>/remote-data`).
 - The function projects the API payload into sidebar UI fields (title, remote-tag indicator, labels, tags text), then reapplies filters.
 - Row DOM uses `data-track-item-*` selectors (`data-track-item-title`, `data-track-item-display-title`, `data-track-item-tags`, `data-track-item-labels`) so new sidebar fields can be added by extending this projection in one place.
+
+## Module map
+
+- `dekho/app.py`: HTTP route registration, request validation, JSON/template responses.
+- `dekho/db.py`: repository read/write functions for tracks, labels, and metadata.
+- `dekho/db_schema.py`: SQL schema/index creation, called by `init_db()`.
+- `dekho/scan.py`: scan orchestration and artifact generation.
+- `dekho/remote_metadata.py`: Suno page parser and metadata extraction.
+- `dekho/static/scripts/index/main.js`: frontend entrypoint orchestration.
+- `dekho/static/scripts/index/api.js`: frontend API request wrappers.
+- `dekho/static/scripts/index/state.js`: frontend mutable UI state and guard helpers.
+- `dekho/static/scripts/index/render-track-list.js`: sidebar rendering/filter projection.
+- `dekho/static/scripts/index/render-track-details.js`: details panel rendering and player header updates.
+
+## API contracts
+
+- `GET /api/tracks/<track_id>`
+  - `200`: track payload with `track_id`, file/user/remote fields, `labels`, and `label_catalog`.
+  - `404`: `{ "error": "Track not found" }`.
+- `POST /api/tracks/<track_id>/user-data`
+  - request: `{ "title_new": string, "notes": string, "labels": string[] }`.
+  - `200`: updated track payload (same shape as GET details route).
+  - `400`: validation errors for wrong types/unknown labels.
+  - `404`: track not found.
+- `POST /api/tracks/<track_id>/remote-data`
+  - request body optional/ignored.
+  - `200`: updated track payload (same shape as GET details route).
+  - `400`: track URL missing or parser/domain validation errors.
+  - `502`: upstream fetch/parsing failure.
+- `POST /api/tracks/filter-by-labels`
+  - request: `{ "labels": string[] }`.
+  - `200`: `{ "track_ids": string[] }`.
+  - `400`: label validation errors.
+
+## Refactor safety workflow
+
+- Change the contract first (route payload, DB shape, or frontend projection).
+- Update/extend tests that lock that contract.
+- Update direct callers (`main.js` and route handlers) last.
+- Prefer helper extraction and file moves before behavioral changes.

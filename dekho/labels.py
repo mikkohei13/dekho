@@ -11,6 +11,7 @@ LABEL_CATALOG: tuple[dict[str, str | tuple[dict[str, str], ...]], ...] = (
             {"key": "playlist.shadowrun", "label": "shadowrun"},
             {"key": "playlist.retro", "label": "retro"},
             {"key": "playlist.western", "label": "western"},
+            {"key": "playlist.other", "label": "other"},
         ),
     },
     {
@@ -53,6 +54,7 @@ LABEL_CATALOG: tuple[dict[str, str | tuple[dict[str, str], ...]], ...] = (
             {"key": "generation.own_mashup", "label": "own mashup"},
             {"key": "generation.other_cover", "label": "other cover"},
             {"key": "generation.ace_cover", "label": "ace-cover"},
+            {"key": "generation.make_cover", "label": "make-cover"},
         ),
     },
     {

@@ -1,3 +1,17 @@
+"""HTTP routes and request/response contracts for Dekho.
+
+Inputs:
+- Flask requests under `/`, `/scan`, and `/api/*`.
+
+Outputs:
+- Rendered templates for index/scan and JSON payloads for API routes.
+
+Side effects:
+- Initializes DB schema on startup.
+- Persists user and remote metadata through DB repository calls.
+- Serves files from app-controlled media paths.
+"""
+
 from pathlib import Path
 
 from flask import Flask, jsonify, render_template, request, send_file
@@ -19,6 +33,64 @@ from .scan import run_scan
 def create_app() -> Flask:
     app = Flask(__name__)
     init_db()
+
+    def _track_not_found_response():
+        return jsonify({"error": "Track not found"}), 404
+
+    def _get_track_details_or_404(track_id: str):
+        details = get_track_details(track_id)
+        if details is None:
+            return None, _track_not_found_response()
+        return details, None
+
+    def _with_label_catalog(details: dict[str, object]) -> dict[str, object]:
+        payload = dict(details)
+        payload["label_catalog"] = get_label_catalog()
+        return payload
+
+    def _resolve_track_audio_path(filepath: str):
+        app_root = Path(".").resolve()
+        music_root = (app_root / "music").resolve()
+        candidate_path = Path(filepath)
+        if candidate_path.is_absolute():
+            return None, jsonify({"error": "Track filepath must be relative to app root."}), 400
+
+        # DB filepaths are typically stored relative to ./music.
+        resolved_path = (music_root / candidate_path).resolve()
+        if not resolved_path.is_file():
+            # Backward-compatible fallback for any rows stored relative to app root.
+            resolved_path = (app_root / candidate_path).resolve()
+
+        if not resolved_path.is_relative_to(app_root):
+            return None, jsonify({"error": "Track filepath is outside app root."}), 400
+        if not resolved_path.is_file():
+            return None, jsonify({"error": "Track audio file not found."}), 404
+        return resolved_path, None, None
+
+    def _resolve_track_artifact_path(
+        track_id: str,
+        artifact_root: str,
+        extension: str,
+        missing_message: str,
+        outside_root_message: str,
+    ):
+        normalized_track_id = track_id.strip()
+        if not normalized_track_id:
+            return None, jsonify({"error": "Track ID is missing."}), 400
+
+        app_root = Path(".").resolve()
+        root = (app_root / artifact_root).resolve()
+        artifact_path = (
+            root
+            / normalized_track_id[0]
+            / f"{normalized_track_id}.{extension}"
+        ).resolve()
+
+        if not artifact_path.is_relative_to(root):
+            return None, jsonify({"error": outside_root_message}), 400
+        if not artifact_path.is_file():
+            return None, jsonify({"error": missing_message}), 404
+        return artifact_path, None, None
 
     @app.get("/favicon.ico")
     def favicon():
@@ -86,10 +158,10 @@ def create_app() -> Flask:
 
     @app.get("/api/tracks/<track_id>")
     def track_details(track_id: str):
-        details = get_track_details(track_id)
-        if details is None:
-            return jsonify({"error": "Track not found"}), 404
-        return jsonify(details)
+        details, error_response = _get_track_details_or_404(track_id)
+        if error_response is not None:
+            return error_response
+        return jsonify(_with_label_catalog(details))
 
     @app.get("/api/labels")
     def label_catalog():
@@ -97,80 +169,50 @@ def create_app() -> Flask:
 
     @app.get("/api/tracks/<track_id>/audio")
     def track_audio(track_id: str):
-        details = get_track_details(track_id)
-        if details is None:
-            return jsonify({"error": "Track not found"}), 404
+        details, error_response = _get_track_details_or_404(track_id)
+        if error_response is not None:
+            return error_response
 
         filepath = details.get("filepath")
         if not isinstance(filepath, str) or not filepath:
             return jsonify({"error": "Track filepath is missing."}), 400
 
-        app_root = Path(".").resolve()
-        music_root = (app_root / "music").resolve()
-        candidate_path = Path(filepath)
-        if candidate_path.is_absolute():
-            return jsonify({"error": "Track filepath must be relative to app root."}), 400
-
-        # DB filepaths are typically stored relative to ./music.
-        resolved_path = (music_root / candidate_path).resolve()
-        if not resolved_path.is_file():
-            # Backward-compatible fallback for any rows stored relative to app root.
-            resolved_path = (app_root / candidate_path).resolve()
-
-        if not resolved_path.is_relative_to(app_root):
-            return jsonify({"error": "Track filepath is outside app root."}), 400
-        if not resolved_path.is_file():
-            return jsonify({"error": "Track audio file not found."}), 404
-
+        resolved_path, response, _status = _resolve_track_audio_path(filepath)
+        if response is not None:
+            return response, _status
         return send_file(resolved_path)
 
     @app.get("/api/tracks/<track_id>/image")
     def track_image(track_id: str):
-        normalized_track_id = track_id.strip()
-        if not normalized_track_id:
-            return jsonify({"error": "Track ID is missing."}), 400
-
-        app_root = Path(".").resolve()
-        images_root = (app_root / "images").resolve()
-        image_path = (
-            images_root
-            / normalized_track_id[0]
-            / f"{normalized_track_id}.jpg"
-        ).resolve()
-
-        if not image_path.is_relative_to(images_root):
-            return jsonify({"error": "Track image path is outside images root."}), 400
-        if not image_path.is_file():
-            return jsonify({"error": "Track image not found."}), 404
-
+        image_path, response, status = _resolve_track_artifact_path(
+            track_id=track_id,
+            artifact_root="images",
+            extension="jpg",
+            missing_message="Track image not found.",
+            outside_root_message="Track image path is outside images root.",
+        )
+        if response is not None:
+            return response, status
         return send_file(image_path)
 
     @app.get("/api/tracks/<track_id>/spectrogram")
     def track_spectrogram(track_id: str):
-        normalized_track_id = track_id.strip()
-        if not normalized_track_id:
-            return jsonify({"error": "Track ID is missing."}), 400
-
-        app_root = Path(".").resolve()
-        spectrograms_root = (app_root / "spectrograms").resolve()
-        spectrogram_path = (
-            spectrograms_root
-            / normalized_track_id[0]
-            / f"{normalized_track_id}.png"
-        ).resolve()
-
-        if not spectrogram_path.is_relative_to(spectrograms_root):
-            return jsonify({"error": "Track spectrogram path is outside spectrograms root."}), 400
-        if not spectrogram_path.is_file():
-            return jsonify({"error": "Track spectrogram not found."}), 404
-
+        spectrogram_path, response, status = _resolve_track_artifact_path(
+            track_id=track_id,
+            artifact_root="spectrograms",
+            extension="png",
+            missing_message="Track spectrogram not found.",
+            outside_root_message="Track spectrogram path is outside spectrograms root.",
+        )
+        if response is not None:
+            return response, status
         return send_file(spectrogram_path)
 
     @app.post("/api/tracks/<track_id>/remote-data")
     def fetch_track_remote_data(track_id: str):
-        details = get_track_details(track_id)
-        if details is None:
-            return jsonify({"error": "Track not found"}), 404
+        details, error_response = _get_track_details_or_404(track_id)
+        if error_response is not None:
+            return error_response
 
         track_url = details.get("url")
         if not isinstance(track_url, str) or not track_url:
@@ -194,16 +236,16 @@ def create_app() -> Flask:
             persona_name=remote_data.get("persona_name"),
         )
 
-        updated_details = get_track_details(track_id)
-        if updated_details is None:
-            return jsonify({"error": "Track not found"}), 404
-        return jsonify(updated_details)
+        updated_details, updated_error_response = _get_track_details_or_404(track_id)
+        if updated_error_response is not None:
+            return updated_error_response
+        return jsonify(_with_label_catalog(updated_details))
 
     @app.post("/api/tracks/<track_id>/user-data")
     def save_track_user_data(track_id: str):
-        details = get_track_details(track_id)
-        if details is None:
-            return jsonify({"error": "Track not found"}), 404
+        details, error_response = _get_track_details_or_404(track_id)
+        if error_response is not None:
+            return error_response
 
         payload = request.get_json(silent=True)
         if payload is None:
@@ -227,10 +269,10 @@ def create_app() -> Flask:
             labels=labels,
         )
 
-        updated_details = get_track_details(track_id)
-        if updated_details is None:
-            return jsonify({"error": "Track not found"}), 404
-        return jsonify(updated_details)
+        updated_details, updated_error_response = _get_track_details_or_404(track_id)
+        if updated_error_response is not None:
+            return updated_error_response
+        return jsonify(_with_label_catalog(updated_details))
 
     @app.post("/api/tracks/filter-by-labels")
     def filter_tracks_by_labels():
