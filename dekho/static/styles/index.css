@@ -394,6 +394,23 @@ body {
   vertical-align: middle;
 }
 
+.track-badge {
+  display: inline-block;
+  margin-left: 0.45rem;
+  font-size: 1.2em;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.playlist-badge {
+  color: rgba(40, 190, 255, 1);
+}
+
+.likes-badge {
+  color: rgba(255, 217, 0, 1);
+  letter-spacing: 0.08em;
+}
+
 .track-id {
   margin: 0.35rem 0 0;
   color: var(--text-muted);

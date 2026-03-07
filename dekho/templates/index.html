@@ -38,6 +38,8 @@
                 class="track-item"
                 data-track-id="{{ track.track_id }}"
                 data-label-keys="{{ track.label_keys | join(',') }}"
+                data-display-title="{{ track.display_title }}"
+                data-has-remote-tags="{{ '1' if track.has_remote_tags else '0' }}"
                 tabindex="0"
               >
                 <div class="track-item-content">
@@ -167,6 +169,50 @@
       return '<span class="remote-tags-indicator">✦</span>';
     }
 
+    function hasPlaylistLabel(labelKeys) {
+      if (!Array.isArray(labelKeys)) {
+        return false;
+      }
+      return labelKeys.some((labelKey) => labelKey.startsWith("playlist."));
+    }
+
+    function getTrackLikeStars(labelKeys) {
+      const labelKeySet = new Set(Array.isArray(labelKeys) ? labelKeys : []);
+      if (labelKeySet.has("like.like3")) {
+        return 3;
+      }
+      if (labelKeySet.has("like.like2")) {
+        return 2;
+      }
+      if (labelKeySet.has("like.like1")) {
+        return 1;
+      }
+      return 0;
+    }
+
+    function getTrackBadgesHtml(labelKeys, trackHasRemoteTags) {
+      let badgesHtml = "";
+      if (hasPlaylistLabel(labelKeys)) {
+        badgesHtml += '<span class="track-badge playlist-badge" title="In playlist">≣</span>';
+      }
+      const starCount = getTrackLikeStars(labelKeys);
+      if (starCount > 0) {
+        badgesHtml += `<span class="track-badge likes-badge" title="Rating">${"★".repeat(starCount)}</span>`;
+      }
+      if (trackHasRemoteTags) {
+        badgesHtml += remoteTagsIndicatorHtml();
+      }
+      return badgesHtml;
+    }
+
+    function renderTrackItemTitle(trackItem, displayTitle, labelKeys, trackHasRemoteTags) {
+      const titleElement = trackItem.querySelector("[data-track-item-title]");
+      if (!(titleElement instanceof HTMLElement)) {
+        return;
+      }
+      titleElement.innerHTML = `${escapeHtml(displayTitle)}${getTrackBadgesHtml(labelKeys, trackHasRemoteTags)}`;
+    }
+
     function updateTracksFilterCount() {
       if (!(tracksFilterCount instanceof HTMLElement)) {
         return;
@@ -220,6 +266,10 @@
         .map((key) => trackLabelByKey.get(key) || key)
         .join(", ");
       labelsElement.textContent = visibleLabels || "-";
+
+      const displayTitle = trackItem.dataset.displayTitle || "Unknown";
+      const trackHasRemoteTags = trackItem.dataset.hasRemoteTags === "1";
+      renderTrackItemTitle(trackItem, displayTitle, normalizedKeys, trackHasRemoteTags);
     }
 
     function toTrackMetaText(value) {
@@ -412,10 +462,8 @@
       }
 
       const displayTitle = getDisplayTitle(data);
-      const titleElement = trackItem.querySelector("[data-track-item-title]");
-      if (titleElement instanceof HTMLElement) {
-        titleElement.innerHTML = `${escapeHtml(displayTitle)}${hasRemoteTags(data.tags) ? remoteTagsIndicatorHtml() : ""}`;
-      }
+      trackItem.dataset.displayTitle = displayTitle;
+      trackItem.dataset.hasRemoteTags = hasRemoteTags(data.tags) ? "1" : "0";
 
       const trackMetaTitle = trackItem.querySelector("[data-track-item-display-title]");
       if (trackMetaTitle instanceof HTMLElement) {
@@ -813,6 +861,12 @@
     }
     renderTrackLabelFilterOptions();
     applyTracksFilter();
+    trackItems.forEach((item) => {
+      const displayTitle = item.dataset.displayTitle || "Unknown";
+      const labelKeys = parseLabelKeys(item.dataset.labelKeys);
+      const trackHasRemoteTags = item.dataset.hasRemoteTags === "1";
+      renderTrackItemTitle(item, displayTitle, labelKeys, trackHasRemoteTags);
+    });
     if (showPlayingTrackButton instanceof HTMLButtonElement) {
       showPlayingTrackButton.disabled = true;
       showPlayingTrackButton.addEventListener("click", showPlayingTrackInContentPanel);
