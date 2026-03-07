@@ -40,7 +40,45 @@ export function createUiState() {
     hasUnsavedUserDataChanges: false,
     selectedTrackFilterLabelKeys: new Set(),
     selectedMissingTrackFilterCategories: new Set(),
+    queueTrackIds: [],
+    queueIndex: -1,
+    queueStatus: "idle",
+    playbackMode: "none",
+    queueNotice: "",
+    lastQueueSnapshotMeta: null,
   };
+}
+
+export function clearQueue(state) {
+  state.queueTrackIds = [];
+  state.queueIndex = -1;
+  state.queueStatus = "idle";
+  state.queueNotice = "";
+  state.lastQueueSnapshotMeta = null;
+}
+
+export function setQueueSnapshot(state, trackIds, queueIndex = 0) {
+  const normalizedTrackIds = Array.isArray(trackIds)
+    ? trackIds.filter((trackId) => typeof trackId === "string" && trackId.trim() !== "")
+    : [];
+  state.queueTrackIds = normalizedTrackIds;
+  if (normalizedTrackIds.length === 0) {
+    state.queueIndex = -1;
+    state.queueStatus = "idle";
+    state.lastQueueSnapshotMeta = null;
+    return;
+  }
+  const nextIndex = Number.isInteger(queueIndex) ? queueIndex : 0;
+  state.queueIndex = Math.min(Math.max(nextIndex, 0), normalizedTrackIds.length - 1);
+  state.queueStatus = "ready";
+  state.lastQueueSnapshotMeta = {
+    createdAt: Date.now(),
+    count: normalizedTrackIds.length,
+  };
+}
+
+export function hasQueueTracks(state) {
+  return Array.isArray(state.queueTrackIds) && state.queueTrackIds.length > 0;
 }
 
 export function markTrackUserDataSaved(state, setStatus) {

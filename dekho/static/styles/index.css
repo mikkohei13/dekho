@@ -312,6 +312,107 @@ body {
   border: 1px solid var(--border);
 }
 
+#queue-drawer {
+  margin-top: 0.7rem;
+  border: 1px solid rgba(121, 168, 255, 0.55);
+  border-radius: 12px;
+  padding: 0.65rem;
+  background:
+    linear-gradient(145deg, rgba(26, 36, 58, 0.92), rgba(16, 22, 36, 0.92));
+  box-shadow:
+    inset 0 0 0 1px rgba(121, 168, 255, 0.18),
+    0 10px 24px rgba(6, 10, 18, 0.55),
+    0 0 20px rgba(121, 168, 255, 0.18);
+}
+
+.queue-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid rgba(121, 168, 255, 0.25);
+}
+
+.queue-drawer-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.queue-drawer-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+#queue-drawer-toggle-btn {
+  white-space: nowrap;
+}
+
+#queue-drawer-body {
+  margin-top: 0.45rem;
+}
+
+#queue-count {
+  color: #b9d0ff;
+  font-size: 0.86rem;
+}
+
+.queue-notice {
+  margin: 0.55rem 0 0;
+  color: #ffcf90;
+  font-size: 0.86rem;
+}
+
+.queue-track-list {
+  list-style: none;
+  margin: 0.55rem 0 0;
+  padding: 0;
+  max-height: 210px;
+  overflow: auto;
+  border-top: 1px solid var(--border);
+}
+
+.queue-track-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.4rem 0.28rem;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  background: rgba(22, 31, 50, 0.35);
+  text-align: left;
+  cursor: pointer;
+}
+
+.queue-track-item:hover,
+.queue-track-item:focus-visible {
+  outline: none;
+  background: rgba(121, 168, 255, 0.16);
+}
+
+.queue-track-item.is-current {
+  background: rgba(121, 168, 255, 0.22);
+}
+
+.queue-track-item.is-playing .queue-track-title::after {
+  content: " • playing";
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.queue-track-image {
+  width: 34px;
+  height: 34px;
+}
+
+.queue-track-title {
+  overflow-wrap: anywhere;
+}
+
 .track-items {
   list-style: none;
   margin: 0;
@@ -347,6 +448,23 @@ body {
   display: flex;
   align-items: flex-start;
   gap: 0.65rem;
+}
+
+.track-item-queue-btn {
+  margin-left: auto;
+  align-self: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.3rem 0.42rem;
+  color: var(--text);
+  background: rgba(12, 16, 24, 0.6);
+  cursor: pointer;
+}
+
+.track-item-queue-btn:hover,
+.track-item-queue-btn:focus-visible {
+  outline: none;
+  border-color: var(--accent);
 }
 
 .track-item-image {
@@ -492,6 +610,11 @@ body {
 #get-remote-data-btn,
 #save-track-user-data-btn,
 #show-playing-track-btn,
+#prev-queue-track-btn,
+#next-queue-track-btn,
+#queue-drawer-toggle-btn,
+#recreate-queue-btn,
+#resume-queue-btn,
 #tracks-label-filter-summary,
 #tracks-clear-filters-btn,
 .scan-link {
@@ -528,6 +651,12 @@ body {
 #get-remote-data-btn:focus-visible,
 #save-track-user-data-btn:hover,
 #save-track-user-data-btn:focus-visible,
+#queue-drawer-toggle-btn:hover,
+#queue-drawer-toggle-btn:focus-visible,
+#recreate-queue-btn:hover,
+#recreate-queue-btn:focus-visible,
+#resume-queue-btn:hover,
+#resume-queue-btn:focus-visible,
 #tracks-label-filter-summary:hover,
 #tracks-label-filter-summary:focus-visible,
 #tracks-clear-filters-btn:not(:disabled):hover,
@@ -541,6 +670,13 @@ body {
     inset 0 0 0 1px rgba(250, 255, 255, 0.05),
     0 0 0 1px rgba(12, 15, 22, 0.68),
     0 0 18px rgba(28, 41, 66, 0.24);
+}
+
+#prev-queue-track-btn:disabled,
+#next-queue-track-btn:disabled,
+#resume-queue-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 #track-info > .remote-actions {

@@ -29,6 +29,28 @@
         </div>
         <div id="tracks-selected-labels" class="tracks-selected-labels" hidden></div>
       </header>
+      <section id="queue-drawer">
+        <header class="queue-drawer-header">
+          <h3>Queue <span id="queue-count">0/0</span></h3>
+          <div class="queue-drawer-actions">
+            <button
+              id="queue-drawer-toggle-btn"
+              type="button"
+              aria-expanded="false"
+              aria-controls="queue-drawer-body"
+            >
+              Show queue
+            </button>
+            <button id="recreate-queue-btn" type="button">Recreate from filter</button>
+            <button id="resume-queue-btn" type="button">▶ Resume</button>
+          </div>
+        </header>
+        <div id="queue-drawer-body" hidden>
+          <p id="queue-notice" class="queue-notice" hidden></p>
+          <p id="queue-empty-state" class="empty-state">Queue is empty.</p>
+          <ul id="queue-track-list" class="queue-track-list"></ul>
+        </div>
+      </section>
 
       <section id="tracks-list">
         {% if tracks %}
@@ -77,6 +99,14 @@
                       </p>
                     </div>
                   </div>
+                  <button
+                    class="track-item-queue-btn"
+                    type="button"
+                    title="Play queue from this track"
+                    aria-label="Play queue from this track"
+                  >
+                    ▶Q
+                  </button>
                 </div>
               </li>
             {% endfor %}
@@ -96,6 +126,8 @@
   <header id="persistent-track-header" class="panel-header" hidden>
     <div class="persistent-track-title-row">
       <h2 id="persistent-track-title"></h2>
+      <button id="prev-queue-track-btn" type="button" title="Previous in queue">◀</button>
+      <button id="next-queue-track-btn" type="button" title="Next in queue">▶</button>
       <button id="show-playing-track-btn" type="button">Show</button>
     </div>
     <audio id="selected-track-player" controls preload="metadata">

@@ -295,6 +295,96 @@ export function refreshTrackItemBadges(trackItems) {
   });
 }
 
+function getTrackItemById(trackId) {
+  const item = document.querySelector(`.track-item[data-track-id="${CSS.escape(trackId)}"]`);
+  return item instanceof HTMLElement ? item : null;
+}
+
+function getTrackItemDisplayTitle(item) {
+  if (!(item instanceof HTMLElement)) {
+    return "Unknown";
+  }
+  return item.dataset.displayTitle
+    || item.querySelector("[data-track-item-display-title]")?.textContent?.trim()
+    || "Unknown";
+}
+
+function getQueueTrackImageSrc(trackId) {
+  return `/api/tracks/${encodeURIComponent(trackId)}/image`;
+}
+
+export function getVisibleTrackIds(trackItems) {
+  if (!Array.isArray(trackItems)) {
+    return [];
+  }
+  return trackItems
+    .filter((item) => item instanceof HTMLElement && !item.hidden)
+    .map((item) => item.dataset.trackId || "")
+    .filter(Boolean);
+}
+
+export function renderQueueDrawer({
+  queueTrackIds,
+  queueIndex,
+  queueList,
+  queueCount,
+  queueEmptyState,
+  queueNotice,
+  queueNoticeText,
+  selectedTrackPlayer,
+  playbackMode,
+}) {
+  if (!(queueList instanceof HTMLElement)) {
+    return;
+  }
+  const hasQueue = Array.isArray(queueTrackIds) && queueTrackIds.length > 0;
+  if (queueCount instanceof HTMLElement) {
+    queueCount.textContent = hasQueue
+      ? `${Math.max(queueIndex + 1, 1)}/${queueTrackIds.length}`
+      : "0/0";
+  }
+  if (queueEmptyState instanceof HTMLElement) {
+    queueEmptyState.hidden = hasQueue;
+  }
+  if (queueNotice instanceof HTMLElement) {
+    queueNotice.textContent = queueNoticeText || "";
+    queueNotice.hidden = !queueNoticeText;
+  }
+  if (!hasQueue) {
+    queueList.innerHTML = "";
+    return;
+  }
+  const playingTrackId = selectedTrackPlayer instanceof HTMLAudioElement
+    ? (selectedTrackPlayer.dataset.trackId || "")
+    : "";
+  const listHtml = queueTrackIds.map((trackId, index) => {
+    const item = getTrackItemById(trackId);
+    const title = getTrackItemDisplayTitle(item);
+    const isQueuedCurrent = index === queueIndex;
+    const isPlaying = playbackMode === "queue" && playingTrackId === trackId;
+    return `
+      <li>
+        <button
+          type="button"
+          class="queue-track-item${isQueuedCurrent ? " is-current" : ""}${isPlaying ? " is-playing" : ""}"
+          data-queue-index="${index}"
+          data-track-id="${escapeHtml(trackId)}"
+        >
+          <img
+            class="track-item-image queue-track-image"
+            src="${escapeHtml(getQueueTrackImageSrc(trackId))}"
+            width="34"
+            height="34"
+            loading="lazy"
+          >
+          <span class="queue-track-title">${escapeHtml(title)}</span>
+        </button>
+      </li>
+    `;
+  }).join("");
+  queueList.innerHTML = listHtml;
+}
+
 export function renderTrackListItem(trackId, data, deps) {
   const { trackLabelByKey, applyFilter } = deps;
   const trackItem = document.querySelector(`.track-item[data-track-id="${CSS.escape(trackId)}"]`);

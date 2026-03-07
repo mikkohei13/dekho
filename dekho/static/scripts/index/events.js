@@ -11,7 +11,7 @@ export function setScanLinkBusy(scanLink) {
   scanLink.textContent = "Scanning...";
 }
 
-export function bindTrackItemEvents(trackItems, state, loadTrackDetails) {
+export function bindTrackItemEvents(trackItems, state, loadTrackDetails, onStartQueueFromTrack) {
   trackItems.forEach((item) => {
     const trackId = item.dataset.trackId;
     if (!trackId) {
@@ -25,13 +25,31 @@ export function bindTrackItemEvents(trackItems, state, loadTrackDetails) {
       loadTrackDetails(trackId, item);
     };
 
-    item.addEventListener("click", openTrack);
+    item.addEventListener("click", (event) => {
+      const target = event.target;
+      if (target instanceof HTMLElement && target.closest(".track-item-queue-btn")) {
+        return;
+      }
+      openTrack();
+    });
     item.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
+        const target = event.target;
+        if (target instanceof HTMLElement && target.closest(".track-item-queue-btn")) {
+          return;
+        }
         event.preventDefault();
         openTrack();
       }
     });
+
+    const queueButton = item.querySelector(".track-item-queue-btn");
+    if (queueButton instanceof HTMLButtonElement) {
+      queueButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        onStartQueueFromTrack?.(trackId);
+      });
+    }
   });
 }
 
@@ -202,6 +220,59 @@ export function bindContentPanelEvents({
     }
     event.preventDefault();
   });
+}
+
+export function bindQueuePanelEvents({
+  tracksPanel,
+  onToggleQueueDrawer,
+  onRecreateQueueFromFilter,
+  onResumeQueue,
+  onSelectQueueIndex,
+}) {
+  if (!(tracksPanel instanceof HTMLElement)) {
+    return;
+  }
+  tracksPanel.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+    if (target.id === "queue-drawer-toggle-btn") {
+      onToggleQueueDrawer();
+      return;
+    }
+    if (target.id === "recreate-queue-btn") {
+      onRecreateQueueFromFilter();
+      return;
+    }
+    if (target.id === "resume-queue-btn") {
+      onResumeQueue();
+      return;
+    }
+    const queueItemButton = target.closest(".queue-track-item");
+    if (!(queueItemButton instanceof HTMLButtonElement)) {
+      return;
+    }
+    const index = Number.parseInt(queueItemButton.dataset.queueIndex || "", 10);
+    if (!Number.isFinite(index)) {
+      return;
+    }
+    onSelectQueueIndex(index);
+  });
+}
+
+export function bindPersistentQueueControls({
+  previousQueueTrackButton,
+  nextQueueTrackButton,
+  onPreviousQueueTrack,
+  onNextQueueTrack,
+}) {
+  if (previousQueueTrackButton instanceof HTMLButtonElement) {
+    previousQueueTrackButton.addEventListener("click", onPreviousQueueTrack);
+  }
+  if (nextQueueTrackButton instanceof HTMLButtonElement) {
+    nextQueueTrackButton.addEventListener("click", onNextQueueTrack);
+  }
 }
 
 export function showPlayingTrackInContentPanel(state, selectedTrackPlayer, loadTrackDetails) {
