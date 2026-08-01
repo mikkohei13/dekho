@@ -19,6 +19,7 @@
         <tr>
           <th data-sort-type="text" class="col-name sortable">Song</th>
           <th data-sort-type="num" title="Has notes" class="sortable">Notes</th>
+          <th data-sort-type="num" title="Is a remix" class="sortable">Remix</th>
           <th data-sort-type="num" title="On a playlist" class="sortable">Playlist</th>
           <th data-sort-type="num" title="Has type" class="sortable">Type</th>
           <th data-sort-type="num" title="Has remote data" class="sortable">Remote</th>
@@ -31,6 +32,7 @@
           <tr>
             <td class="col-name" data-sort="{{ track.display_title }}">{{ track.display_title }}</td>
             <td class="col-icon" data-sort="{{ 1 if track.has_notes else 0 }}">{% if track.has_notes %}✎{% endif %}</td>
+            <td class="col-icon" data-sort="{{ 1 if track.has_remix else 0 }}">{% if track.has_remix %}↻{% endif %}</td>
             <td class="col-icon playlist" data-sort="{{ 1 if track.on_playlist else 0 }}">{% if track.on_playlist %}≣{% endif %}</td>
             <td class="col-icon type" data-sort="{{ 1 if track.has_type else 0 }}">{% if track.has_type %}◈{% endif %}</td>
             <td class="col-icon remote" data-sort="{{ 1 if track.has_remote else 0 }}">{% if track.has_remote %}✦{% endif %}</td>
@@ -41,7 +43,7 @@
           </tr>
         {% else %}
           <tr>
-            <td colspan="7">No tracks found.</td>
+            <td colspan="8">No tracks found.</td>
           </tr>
         {% endfor %}
       </tbody>

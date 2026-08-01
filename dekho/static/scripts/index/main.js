@@ -381,11 +381,13 @@ async function saveUserData(trackId) {
   const error = document.getElementById("track-user-data-error");
   const titleInput = document.getElementById("title-new-input");
   const notesInput = document.getElementById("notes-input");
+  const remixOfInput = document.getElementById("remix-of-input");
   if (
     !(button instanceof HTMLButtonElement)
     || !(error instanceof HTMLElement)
     || !(titleInput instanceof HTMLInputElement)
     || !(notesInput instanceof HTMLTextAreaElement)
+    || !(remixOfInput instanceof HTMLInputElement)
   ) {
     return;
   }
@@ -399,6 +401,7 @@ async function saveUserData(trackId) {
     const payload = await saveTrackUserData(trackId, {
       title_new: titleInput.value,
       notes: notesInput.value,
+      remix_of: remixOfInput.value,
       labels,
     });
     renderTrackListItem(trackId, payload, { trackLabelByKey, applyFilter });

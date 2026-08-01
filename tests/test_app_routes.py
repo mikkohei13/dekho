@@ -41,6 +41,7 @@ class AppRouteContractTests(unittest.TestCase):
             json={
                 "title_new": "Renamed Track",
                 "notes": "Needs review",
+                "remix_of": "fe9019aa-debb-4c72-859d-589a38b44835",
                 "labels": ["like.like2", "playlist.story"],
             },
         )
@@ -48,6 +49,10 @@ class AppRouteContractTests(unittest.TestCase):
         payload = response.get_json()
         self.assertEqual(payload["title_new"], "Renamed Track")
         self.assertEqual(payload["notes"], "Needs review")
+        self.assertEqual(
+            payload["remix_of"],
+            "fe9019aa-debb-4c72-859d-589a38b44835",
+        )
         self.assertEqual(payload["labels"], ["like.like2", "playlist.story"])
         self.assertIn("label_catalog", payload)
 
@@ -76,6 +81,7 @@ class AppRouteContractTests(unittest.TestCase):
             track_id="track-1",
             title_new="Track One",
             notes="some notes",
+            remix_of="fe9019aa-debb-4c72-859d-589a38b44835",
             labels=["like.like2", "playlist.story", "type.instrumental"],
         )
         db.upsert_track_remote_data(
@@ -94,6 +100,7 @@ class AppRouteContractTests(unittest.TestCase):
         html = response.get_data(as_text=True)
         self.assertIn("Track One", html)
         self.assertIn("✎", html)
+        self.assertIn("↻", html)
         self.assertIn("≣", html)
         self.assertIn("◈", html)
         self.assertIn("✦", html)

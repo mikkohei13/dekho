@@ -162,6 +162,7 @@ def create_app() -> Flask:
             filepath = str(row["filepath"]) if row["filepath"] else ""
             title_new = str(row["title_new"]) if row["title_new"] else ""
             notes = str(row["notes"]) if row["notes"] else ""
+            remix_of = str(row["remix_of"]) if row["remix_of"] else ""
             tags = str(row["tags"]) if row["tags"] else ""
             label_keys = row["label_keys"] if isinstance(row.get("label_keys"), list) else []
             if not track_id or not filepath:
@@ -205,6 +206,7 @@ def create_app() -> Flask:
                 {
                     "display_title": title_new or "Unknown",
                     "has_notes": bool(notes.strip()),
+                    "has_remix": bool(remix_of.strip()),
                     "on_playlist": any(key.startswith("playlist.") for key in label_key_set),
                     "has_type": any(key.startswith("type.") for key in label_key_set),
                     "has_remote": bool(tags.strip()),
@@ -319,10 +321,17 @@ def create_app() -> Flask:
 
         title_new = payload.get("title_new", "")
         notes = payload.get("notes", "")
+        remix_of = payload.get("remix_of", "")
         labels_raw = payload.get("labels", [])
 
-        if not isinstance(title_new, str) or not isinstance(notes, str):
-            return jsonify({"error": "title_new and notes must be strings."}), 400
+        if (
+            not isinstance(title_new, str)
+            or not isinstance(notes, str)
+            or not isinstance(remix_of, str)
+        ):
+            return jsonify(
+                {"error": "title_new, notes, and remix_of must be strings."}
+            ), 400
         try:
             labels = normalize_label_keys(labels_raw)
         except ValueError as error:
@@ -332,6 +341,7 @@ def create_app() -> Flask:
             track_id=track_id,
             title_new=title_new,
             notes=notes,
+            remix_of=remix_of,
             labels=labels,
         )
 

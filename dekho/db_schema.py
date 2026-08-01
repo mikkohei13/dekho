@@ -1,6 +1,21 @@
 import sqlite3
 
 
+def _ensure_column(
+    connection: sqlite3.Connection,
+    table: str,
+    column: str,
+    definition: str,
+) -> None:
+    existing = {
+        row[1] for row in connection.execute(f"PRAGMA table_info({table})")
+    }
+    if column not in existing:
+        connection.execute(
+            f"ALTER TABLE {table} ADD COLUMN {column} {definition}"
+        )
+
+
 def ensure_schema(connection: sqlite3.Connection) -> None:
     connection.execute(
         """
@@ -37,10 +52,12 @@ def ensure_schema(connection: sqlite3.Connection) -> None:
             track_id TEXT PRIMARY KEY,
             notes TEXT,
             title_new TEXT,
+            remix_of TEXT,
             FOREIGN KEY (track_id) REFERENCES tracks_file_data(track_id)
         )
         """
     )
+    _ensure_column(connection, "track_user_data", "remix_of", "TEXT")
     connection.execute(
         """
         CREATE TABLE IF NOT EXISTS label_definitions (

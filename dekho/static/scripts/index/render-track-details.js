@@ -130,6 +130,7 @@ export function renderDetails(data, contentPanelBody) {
   const title = data.title ?? "";
   const titleNew = data.title_new ?? "";
   const notes = data.notes ?? "";
+  const remixOf = data.remix_of ?? "";
   const trackId = data.track_id ?? "";
   const url = data.url ?? "";
   const filepath = data.filepath ?? "";
@@ -164,6 +165,8 @@ export function renderDetails(data, contentPanelBody) {
           <input id="title-new-input" name="title_new" type="text" value="${escapeHtml(titleNew)}">
           <label for="notes-input">notes</label>
           <textarea id="notes-input" name="notes" rows="4">${escapeHtml(notes)}</textarea>
+          <label for="remix-of-input">remix_of</label>
+          <input id="remix-of-input" name="remix_of" type="text" value="${escapeHtml(remixOf)}">
           <div class="track-labels">
             <div class="track-labels-groups">
               ${renderLabelGroups(labelCatalog, labels)}

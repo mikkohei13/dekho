@@ -107,7 +107,8 @@ def get_all_tracks_file_data() -> list[dict[str, object]]:
     with get_connection() as connection:
         rows = connection.execute(
             """
-            SELECT tfd.track_id, tfd.filepath, tfd.title, tud.title_new, tud.notes, trd.tags
+            SELECT tfd.track_id, tfd.filepath, tfd.title, tud.title_new, tud.notes,
+                   tud.remix_of, trd.tags
             FROM tracks_file_data AS tfd
             LEFT JOIN track_user_data AS tud ON tud.track_id = tfd.track_id
             LEFT JOIN track_remote_data AS trd ON trd.track_id = tfd.track_id
@@ -139,7 +140,8 @@ def get_all_tracks_file_data() -> list[dict[str, object]]:
             "title": row[2],
             "title_new": row[3],
             "notes": row[4],
-            "tags": row[5],
+            "remix_of": row[5],
+            "tags": row[6],
             "label_keys": label_keys_by_track_id.get(str(row[0]), []),
             "labels": labels_by_track_id.get(str(row[0]), []),
         }
@@ -167,7 +169,8 @@ def get_track_details(track_id: str) -> dict[str, object] | None:
                 trd.model_name,
                 trd.persona_name,
                 tud.title_new,
-                tud.notes
+                tud.notes,
+                tud.remix_of
             FROM tracks_file_data AS tfd
             LEFT JOIN track_remote_data AS trd ON trd.track_id = tfd.track_id
             LEFT JOIN track_user_data AS tud ON tud.track_id = tfd.track_id
@@ -195,6 +198,7 @@ def get_track_details(track_id: str) -> dict[str, object] | None:
         "persona_name": row[12],
         "title_new": row[13],
         "notes": row[14],
+        "remix_of": row[15],
         "labels": get_track_label_keys(track_id),
     }
 
@@ -285,19 +289,21 @@ def upsert_track_user_data(
     track_id: str,
     title_new: str,
     notes: str,
+    remix_of: str = "",
     labels: list[str] | None = None,
 ) -> None:
     init_db()
     with get_connection() as connection:
         connection.execute(
             """
-            INSERT INTO track_user_data (track_id, title_new, notes)
-            VALUES (?, ?, ?)
+            INSERT INTO track_user_data (track_id, title_new, notes, remix_of)
+            VALUES (?, ?, ?, ?)
             ON CONFLICT(track_id) DO UPDATE SET
                 title_new = excluded.title_new,
-                notes = excluded.notes
+                notes = excluded.notes,
+                remix_of = excluded.remix_of
             """,
-            (track_id, title_new, notes),
+            (track_id, title_new, notes, remix_of),
         )
         if labels is not None:
             replace_track_labels(connection=connection, track_id=track_id, labels=labels)
