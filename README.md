@@ -51,7 +51,7 @@ See more details in `ARCHITECTURE.md`.
 ## Tests
 
 ```bash
-uv run python -m unittest discover -s tests -v
+uv run python3 -m unittest discover -s tests -v
 ```
 
 ## Database
