@@ -102,10 +102,7 @@ uv run export_db_to_csv.py
 
 ## Upcoming features (keep these in mind but **don't develop unless asked**)
 
-- Add style labels
-- Group play/pause/prev/next buttons
 - Add overview visualization, for seeing which trachs have which data (desc, lyrics, keyword types)
-- Remove unneeded visualizations
 - Add data export (so it can be analyzed elsewhere)
 - Add online UI generator - simple, just for mobile playing
 - Label: make cover

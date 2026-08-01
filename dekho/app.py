@@ -1,10 +1,10 @@
 """HTTP routes and request/response contracts for Dekho.
 
 Inputs:
-- Flask requests under `/`, `/scan`, and `/api/*`.
+- Flask requests under `/`, `/overview`, `/scan`, and `/api/*`.
 
 Outputs:
-- Rendered templates for index/scan and JSON payloads for API routes.
+- Rendered templates for index/overview/scan and JSON payloads for API routes.
 
 Side effects:
 - Initializes DB schema on startup.
@@ -151,6 +151,63 @@ def create_app() -> Flask:
             tracks=tracks_in_music,
             label_catalog=label_catalog,
         )
+
+    @app.get("/overview")
+    def overview() -> str:
+        music_root = Path("./music").resolve()
+        rows: list[dict[str, object]] = []
+
+        for row in get_all_tracks_file_data():
+            track_id = str(row["track_id"]) if row["track_id"] else ""
+            filepath = str(row["filepath"]) if row["filepath"] else ""
+            title_new = str(row["title_new"]) if row["title_new"] else ""
+            notes = str(row["notes"]) if row["notes"] else ""
+            tags = str(row["tags"]) if row["tags"] else ""
+            label_keys = row["label_keys"] if isinstance(row.get("label_keys"), list) else []
+            if not track_id or not filepath:
+                continue
+
+            path_in_db = Path(filepath)
+            if path_in_db.is_absolute():
+                continue
+            resolved_path = (music_root / path_in_db).resolve()
+            try:
+                resolved_path.relative_to(music_root)
+            except ValueError:
+                continue
+
+            label_key_set = {str(key) for key in label_keys if key}
+            like_class = ""
+            like_stars = 0
+            if "like.like3" in label_key_set:
+                like_class = "like"
+                like_stars = 3
+            elif "like.like2" in label_key_set:
+                like_class = "like"
+                like_stars = 2
+            elif "like.like1" in label_key_set:
+                like_class = "like"
+                like_stars = 1
+            elif "like.like0" in label_key_set:
+                like_class = "like0"
+                like_stars = 1
+            elif "like.not_like" in label_key_set:
+                like_class = "not-like"
+                like_stars = 1
+
+            rows.append(
+                {
+                    "display_title": title_new or "Unknown",
+                    "has_notes": bool(notes.strip()),
+                    "on_playlist": any(key.startswith("playlist.") for key in label_key_set),
+                    "has_remote": bool(tags.strip()),
+                    "like_class": like_class,
+                    "like_stars": like_stars,
+                    "instrumental": "type.instrumental" in label_key_set,
+                }
+            )
+
+        return render_template("overview.html", tracks=rows)
 
     @app.get("/scan")
     def scan() -> str:

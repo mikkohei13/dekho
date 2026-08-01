@@ -71,6 +71,35 @@ class AppRouteContractTests(unittest.TestCase):
         self.assertEqual(payload["model_name"], "chirp-crow")
         self.assertIn("label_catalog", payload)
 
+    def test_overview_page_renders_feature_icons(self):
+        db.upsert_track_user_data(
+            track_id="track-1",
+            title_new="Track One",
+            notes="some notes",
+            labels=["like.like2", "playlist.story", "type.instrumental"],
+        )
+        db.upsert_track_remote_data(
+            track_id="track-1",
+            prompt="lyrics",
+            tags="ambient",
+            negative_tags=None,
+            has_cover_clip_id=False,
+            major_model_version=None,
+            model_name=None,
+            persona_name=None,
+        )
+
+        response = self.client.get("/overview")
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertIn("Track One", html)
+        self.assertIn("✎", html)
+        self.assertIn("≣", html)
+        self.assertIn("✦", html)
+        self.assertIn("★★", html)
+        self.assertIn("♪", html)
+        self.assertIn('class="col-icon stars like"', html)
+
 
 if __name__ == "__main__":
     unittest.main()

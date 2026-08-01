@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dekho - Overview</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="any">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles/overview.css') }}">
+</head>
+<body>
+  <nav>
+    <strong>Overview</strong>
+    <a href="/">Back to home</a>
+  </nav>
+
+  <main>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-name">Song</th>
+          <th title="Has notes">Notes</th>
+          <th title="On a playlist">Playlist</th>
+          <th title="Has remote data">Remote</th>
+          <th title="Like rating">Stars</th>
+          <th title="Instrumental">Instr.</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for track in tracks %}
+          <tr>
+            <td class="col-name">{{ track.display_title }}</td>
+            <td class="col-icon">{% if track.has_notes %}✎{% endif %}</td>
+            <td class="col-icon playlist">{% if track.on_playlist %}≣{% endif %}</td>
+            <td class="col-icon remote">{% if track.has_remote %}✦{% endif %}</td>
+            <td class="col-icon stars {{ track.like_class }}">
+              {% if track.like_stars %}{{ "★" * track.like_stars }}{% endif %}
+            </td>
+            <td class="col-icon">{% if track.instrumental %}♪{% endif %}</td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="6">No tracks found.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </main>
+</body>
+</html>
