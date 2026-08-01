@@ -17,6 +17,18 @@ import numpy as np
 DB_PATH = Path("dekho.sqlite3")
 MUSIC_ROOT = Path("music")
 
+PITCH_CLASSES = ("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
+
+# Krumhansl-Schmuckler key profiles (tonic at index 0).
+MAJOR_PROFILE = np.array(
+    [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88],
+    dtype=float,
+)
+MINOR_PROFILE = np.array(
+    [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17],
+    dtype=float,
+)
+
 
 def _get_track(track_id: str) -> tuple[str, str]:
     """Return (display_title, filepath) for a track_id."""
@@ -73,14 +85,13 @@ def _resolve_audio_path(filepath: str) -> Path:
     return resolved
 
 
-def estimate_tempo(audio_path: Path) -> tuple[float, float]:
+def estimate_tempo(y: np.ndarray, sr: int) -> tuple[float, float]:
     """Estimate global tempo (BPM) and a 0–1 confidence proxy.
 
     Librosa has no built-in tempo confidence. Confidence here is the fraction
     of frames whose local tempo estimate is within 5% of the global BPM —
     a stability score for how consistent the tempo reading is across the track.
     """
-    y, sr = librosa.load(audio_path, sr=22050, mono=True)
     hop_length = 512
     onset_env = librosa.onset.onset_strength(y=y, sr=sr, hop_length=hop_length)
     tempo = float(
@@ -103,6 +114,36 @@ def estimate_tempo(audio_path: Path) -> tuple[float, float]:
     return tempo, confidence
 
 
+def estimate_key(y: np.ndarray, sr: int) -> tuple[str, str]:
+    """Estimate musical key and mode via Krumhansl-Schmuckler key finding.
+
+    Uses chroma from the harmonic component, correlated against major/minor
+    key profiles for all 12 tonics. Librosa has no built-in key detector.
+    """
+    y_harmonic, _y_percussive = librosa.effects.hpss(y)
+    chroma = librosa.feature.chroma_cqt(y=y_harmonic, sr=sr)
+    chroma_avg = np.mean(chroma, axis=1)
+
+    best_key = "C"
+    best_mode = "major"
+    best_correlation = float("-inf")
+
+    for tonic_index, pitch_class in enumerate(PITCH_CLASSES):
+        # Align chroma so candidate tonic sits at profile index 0.
+        aligned = np.roll(chroma_avg, -tonic_index)
+        for mode, profile in (("major", MAJOR_PROFILE), ("minor", MINOR_PROFILE)):
+            if np.std(aligned) == 0 or np.std(profile) == 0:
+                correlation = 0.0
+            else:
+                correlation = float(np.corrcoef(aligned, profile)[0, 1])
+            if correlation > best_correlation:
+                best_correlation = correlation
+                best_key = pitch_class
+                best_mode = mode
+
+    return best_key, best_mode
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Extract exploratory librosa features for a Dekho track."
@@ -123,9 +164,15 @@ def main() -> None:
     print(f"filepath: {audio_path}")
     print("Analyzing with librosa...")
 
-    bpm, confidence = estimate_tempo(audio_path)
+    y, sr = librosa.load(audio_path, sr=22050, mono=True)
+
+    bpm, confidence = estimate_tempo(y, sr)
     print(f"tempo_bpm: {bpm:.2f}")
     print(f"tempo_confidence: {confidence:.4f}")
+
+    key, mode = estimate_key(y, sr)
+    print(f"key: {key}")
+    print(f"mode: {mode}")
 
 
 if __name__ == "__main__":
