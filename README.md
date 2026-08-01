@@ -100,6 +100,12 @@ uv run dev_db_summary.py
   • date_created (TEXT, NULL)
   • date_added (TEXT, NULL)
 
+Export database to CSV:
+
+```bash
+uv run export_db_to_csv.py
+```
+
 ## Upcoming features (keep these in mind but **don't develop unless asked**)
 
 - Add style labels

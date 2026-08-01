@@ -2,9 +2,11 @@
 **/music/**
 **/music_duplicates/**
 **/database_backups/**
+**/export/**
 **/images/**
 **/spectrograms/**
 *.sqlite3
+**/export/**
 
 temp*.html
 temp*.htm
