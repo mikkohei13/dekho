@@ -154,7 +154,7 @@ function updateQueueButtonsState() {
     recreateQueueButton.disabled = !hasVisibleTracks;
   }
   if (previousQueueTrackButton instanceof HTMLButtonElement) {
-    previousQueueTrackButton.disabled = !isQueuePlayback || state.queueIndex <= 0;
+    previousQueueTrackButton.disabled = !isQueuePlayback;
   }
   if (nextQueueTrackButton instanceof HTMLButtonElement) {
     nextQueueTrackButton.disabled = !isQueuePlayback || state.queueIndex >= state.queueTrackIds.length - 1;
@@ -300,6 +300,23 @@ function moveQueue(delta) {
   playQueueAtIndex(state.queueIndex + delta);
 }
 
+function onPreviousQueueTrack() {
+  if (!hasQueueTracks(state) || state.playbackMode !== "queue") {
+    return;
+  }
+  const currentTime = selectedTrackPlayer instanceof HTMLAudioElement
+    ? selectedTrackPlayer.currentTime
+    : 0;
+  const isPastRestartThreshold = currentTime > 2;
+  if (isPastRestartThreshold || state.queueIndex <= 0) {
+    if (selectedTrackPlayer instanceof HTMLAudioElement) {
+      selectedTrackPlayer.currentTime = 0;
+    }
+    return;
+  }
+  moveQueue(-1);
+}
+
 function showQueueTrackInContentPanel(trackId) {
   const trackItem = getTrackItemById(trackId);
   if (!(trackItem instanceof HTMLElement)) {
@@ -424,7 +441,7 @@ bindQueuePanelEvents({
 bindPersistentQueueControls({
   previousQueueTrackButton,
   nextQueueTrackButton,
-  onPreviousQueueTrack: () => moveQueue(-1),
+  onPreviousQueueTrack,
   onNextQueueTrack: () => moveQueue(1),
 });
 bindContentPanelEvents({

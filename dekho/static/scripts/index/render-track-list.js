@@ -470,6 +470,16 @@ export function renderQueueDrawer({
     `;
   }).join("");
   queueList.innerHTML = listHtml;
+
+  const currentItem = queueList.querySelector(".queue-track-item.is-current");
+  const drawerBody = queueList.closest("#queue-drawer-body");
+  if (
+    currentItem instanceof HTMLElement
+    && drawerBody instanceof HTMLElement
+    && !drawerBody.hidden
+  ) {
+    currentItem.scrollIntoView({ block: "nearest" });
+  }
 }
 
 export function renderTrackListItem(trackId, data, deps) {
