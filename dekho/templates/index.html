@@ -124,15 +124,17 @@
     </section>
   </main>
   <header id="persistent-track-header" class="panel-header" hidden>
-    <div class="persistent-track-title-row">
-      <h2 id="persistent-track-title"></h2>
-      <button id="prev-queue-track-btn" type="button" title="Previous in queue">&laquo; Prev</button>
-      <button id="next-queue-track-btn" type="button" title="Next in queue">Next &raquo;</button>
+    <div class="persistent-track-controls">
       <button id="show-playing-track-btn" type="button">Show</button>
+      <div class="persistent-track-transport">
+        <button id="prev-queue-track-btn" type="button" title="Previous in queue">&laquo; Prev</button>
+        <button id="next-queue-track-btn" type="button" title="Next in queue">Next &raquo;</button>
+      </div>
+      <audio id="selected-track-player" controls preload="metadata">
+        Your browser does not support audio playback.
+      </audio>
+      <h2 id="persistent-track-title"></h2>
     </div>
-    <audio id="selected-track-player" controls preload="metadata">
-      Your browser does not support audio playback.
-    </audio>
   </header>
   <script id="tracks-label-catalog-data" type="application/json">{{ label_catalog | default([], true) | tojson }}</script>
   <script type="module" src="{{ url_for('static', filename='scripts/index/main.js') }}"></script>

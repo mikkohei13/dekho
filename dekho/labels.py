@@ -80,6 +80,9 @@ LABEL_CATALOG: tuple[dict[str, str | tuple[dict[str, str], ...]], ...] = (
 )
 
 
+
+
+
 def get_label_catalog() -> list[dict[str, str | list[dict[str, str]]]]:
     return [
         {
