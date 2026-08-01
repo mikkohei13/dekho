@@ -102,7 +102,6 @@ uv run export_db_to_csv.py
 
 ## Upcoming features (keep these in mind but **don't develop unless asked**)
 
-- Add overview visualization, for seeing which trachs have which data (desc, lyrics, keyword types)
 - Add data export (so it can be analyzed elsewhere)
 - Add online UI generator - simple, just for mobile playing
 - Label: make cover
@@ -115,4 +114,15 @@ uv run export_db_to_csv.py
 - Show filters on navbar, keep all labels visible
 - Show track label selection in the same order as they are in the catalog
 
+- Data extraction:
+
+- Estimated tempo BPM
+- Musical key
+- Mode: major or minor
+- Integrated loudness, peaks and dynamic range
+- Pitch-class profile, often called chroma
+- Average loudness
+- Crest factor: difference between peaks and average level
+- valence: negative or melancholic ↔ positive or joyful
+- arousal: calm ↔ energetic
 
