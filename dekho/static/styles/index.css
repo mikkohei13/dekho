@@ -537,16 +537,6 @@ body {
   overflow-wrap: anywhere;
 }
 
-.remote-tags-indicator {
-  display: inline-block;
-  margin-left: 0.45rem;
-  color: rgba(91, 236, 184, 0.98);
-  font-size: 0.85em;
-  line-height: 1;
-  text-shadow: 0 0 6px rgba(91, 236, 184, 0.35);
-  vertical-align: middle;
-}
-
 .track-badge {
   display: inline-block;
   margin-left: 0.45rem;
@@ -562,6 +552,12 @@ body {
 .likes-badge {
   color: rgba(255, 217, 0, 1);
   letter-spacing: 0.08em;
+}
+
+.remote-tags-badge {
+  color: rgba(91, 236, 184, 0.98);
+  font-size: 0.9em;
+  text-shadow: 0 0 6px rgba(91, 236, 184, 0.35);
 }
 
 .track-id {

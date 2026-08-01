@@ -23,10 +23,6 @@ function getTrackLikeStars(labelKeys) {
   return 0;
 }
 
-function remoteTagsIndicatorHtml() {
-  return "<span class=\"remote-tags-indicator\">✦</span>";
-}
-
 function getTrackBadgesHtml(labelKeys, trackHasRemoteTags) {
   let badgesHtml = "";
   if (hasPlaylistLabel(labelKeys)) {
@@ -37,7 +33,7 @@ function getTrackBadgesHtml(labelKeys, trackHasRemoteTags) {
     badgesHtml += `<span class="track-badge likes-badge" title="Rating">${"★".repeat(starCount)}</span>`;
   }
   if (trackHasRemoteTags) {
-    badgesHtml += remoteTagsIndicatorHtml();
+    badgesHtml += "<span class=\"track-badge remote-tags-badge\" title=\"Has remote data\">✦</span>";
   }
   return badgesHtml;
 }

@@ -154,7 +154,7 @@ export function renderDetails(data, contentPanelBody) {
     <section id="track-info">
       <header class="panel-header track-info-header">
         <h2>
-          ${escapeHtml(displayTitle)}${hasRemoteTags(tags) ? "<span class=\"remote-tags-indicator\">✦</span>" : ""}
+          ${escapeHtml(displayTitle)}${hasRemoteTags(tags) ? "<span class=\"track-badge remote-tags-badge\" title=\"Has remote data\">✦</span>" : ""}
         </h2>
         <button id="play-current-track-btn" type="button">▶ Play</button>
       </header>
