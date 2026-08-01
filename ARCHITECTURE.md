@@ -54,7 +54,7 @@ Metadata are fetched server-side from public Suno track pages by parsing Next.js
 - On startup, `init_db()` seeds `label_definitions` from catalog with upsert-by-key (`key` is unique). This does not delete old keys that were removed from LABEL_CATALOG.
 - Track assignments are stored in `track_user_data_labels` (`track_id`, `label_id`) and saved via `POST /api/tracks/<track_id>/user-data`.
 - API payload uses label keys (`labels: string[]`), validated against current catalog (`normalize_label_keys`).
-- Track filtering is key-based via `POST /api/tracks/filter-by-labels`; SQL returns tracks that contain all selected labels.
+- Track list label filtering is client-side in `render-track-list.js`, with match rules mirrored in `dekho/label_filter.py` (OR within category by default; AND mode requires every selected key).
 - Safety check: index route (`/`) returns plain-text error instead of UI if DB has assigned label keys not present in current `LABEL_CATALOG`.
 
 ## Track list synchronization
@@ -95,10 +95,6 @@ Metadata are fetched server-side from public Suno track pages by parsing Next.js
   - `200`: updated track payload (same shape as GET details route).
   - `400`: track URL missing or parser/domain validation errors.
   - `502`: upstream fetch/parsing failure.
-- `POST /api/tracks/filter-by-labels`
-  - request: `{ "labels": string[] }`.
-  - `200`: `{ "track_ids": string[] }`.
-  - `400`: label validation errors.
 
 ## Refactor safety workflow
 

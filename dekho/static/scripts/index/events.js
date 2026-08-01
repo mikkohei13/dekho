@@ -60,6 +60,7 @@ export function bindFilterEvents({
   tracksLabelFilter,
   selectedTrackFilterLabelKeys,
   selectedMissingTrackFilterCategories,
+  state,
   applyTracksFilter,
   renderTrackLabelFilterOptions,
 }) {
@@ -70,7 +71,15 @@ export function bindFilterEvents({
   if (tracksLabelFilterOptions instanceof HTMLElement) {
     tracksLabelFilterOptions.addEventListener("change", (event) => {
       const target = event.target;
-      if (!(target instanceof HTMLInputElement) || !target.classList.contains("tracks-filter-option-input")) {
+      if (!(target instanceof HTMLInputElement)) {
+        return;
+      }
+      if (target.classList.contains("tracks-filter-mode-input")) {
+        state.labelFilterMatchMode = target.value === "and" ? "and" : "or";
+        applyTracksFilter();
+        return;
+      }
+      if (!target.classList.contains("tracks-filter-option-input")) {
         return;
       }
       const missingCategory = target.dataset.missingCategory;

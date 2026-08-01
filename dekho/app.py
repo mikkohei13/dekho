@@ -18,7 +18,6 @@ from flask import Flask, jsonify, render_template, request, send_file
 
 from .db import (
     get_all_tracks_file_data,
-    get_track_ids_matching_all_labels,
     get_track_details,
     get_unknown_label_assignments,
     init_db,
@@ -275,20 +274,5 @@ def create_app() -> Flask:
         if updated_error_response is not None:
             return updated_error_response
         return jsonify(_with_label_catalog(updated_details))
-
-    @app.post("/api/tracks/filter-by-labels")
-    def filter_tracks_by_labels():
-        payload = request.get_json(silent=True)
-        if payload is None:
-            payload = {}
-
-        labels_raw = payload.get("labels", [])
-        try:
-            labels = normalize_label_keys(labels_raw)
-        except ValueError as error:
-            return jsonify({"error": str(error)}), 400
-
-        track_ids = get_track_ids_matching_all_labels(labels)
-        return jsonify({"track_ids": track_ids})
 
     return app

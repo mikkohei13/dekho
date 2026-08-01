@@ -71,33 +71,6 @@ class AppRouteContractTests(unittest.TestCase):
         self.assertEqual(payload["model_name"], "chirp-crow")
         self.assertIn("label_catalog", payload)
 
-    def test_filter_by_labels_returns_matching_track_ids(self):
-        db.upsert_track(
-            track_id="track-2",
-            filepath="music/track-2.mp3",
-            title="Track Two",
-        )
-        db.upsert_track_user_data(
-            track_id="track-1",
-            title_new="Track One",
-            notes="",
-            labels=["like.like1", "playlist.story"],
-        )
-        db.upsert_track_user_data(
-            track_id="track-2",
-            title_new="Track Two",
-            notes="",
-            labels=["like.like1"],
-        )
-
-        response = self.client.post(
-            "/api/tracks/filter-by-labels",
-            json={"labels": ["like.like1", "playlist.story"]},
-        )
-        self.assertEqual(response.status_code, 200)
-        payload = response.get_json()
-        self.assertEqual(payload["track_ids"], ["track-1"])
-
 
 if __name__ == "__main__":
     unittest.main()

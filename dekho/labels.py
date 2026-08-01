@@ -43,6 +43,9 @@ LABEL_CATALOG: tuple[dict[str, str | tuple[dict[str, str], ...]], ...] = (
         "labels": (
             {"key": "type.instrumental", "label": "instrumental"},
             {"key": "type.epic", "label": "epic"},
+            {"key": "type.dreamy", "label": "dreamy"},
+            {"key": "type.energetic", "label": "energetic"},
+            {"key": "type.happy", "label": "happy"},
         ),
     },
     {

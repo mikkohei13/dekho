@@ -229,6 +229,16 @@ body {
   gap: 0.55rem;
 }
 
+.tracks-filter-match-mode {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.45rem;
+}
+
+.tracks-filter-match-mode-options {
+  display: grid;
+  gap: 0.22rem;
+}
+
 .tracks-filter-category {
   border-bottom: 1px solid var(--border);
   padding-bottom: 0.45rem;
@@ -267,6 +277,10 @@ body {
 }
 
 .tracks-filter-option input {
+  width: auto;
+}
+
+.tracks-filter-mode-input {
   width: auto;
 }
 

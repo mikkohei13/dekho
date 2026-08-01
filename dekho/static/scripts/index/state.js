@@ -40,6 +40,7 @@ export function createUiState() {
     hasUnsavedUserDataChanges: false,
     selectedTrackFilterLabelKeys: new Set(),
     selectedMissingTrackFilterCategories: new Set(),
+    labelFilterMatchMode: "or",
     queueTrackIds: [],
     queueIndex: -1,
     queueStatus: "idle",

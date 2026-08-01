@@ -105,11 +105,44 @@ function getTrackItemLabelCategories(item) {
   return categories;
 }
 
+function getLabelKeyCategory(labelKey) {
+  return labelKey.split(".", 1)[0] || "";
+}
+
+export function trackMatchesSelectedLabels(trackLabelKeys, selectedLabelKeys, matchMode) {
+  if (!(selectedLabelKeys instanceof Set) || selectedLabelKeys.size === 0) {
+    return true;
+  }
+  if (matchMode === "and") {
+    return Array.from(selectedLabelKeys).every((labelKey) => trackLabelKeys.has(labelKey));
+  }
+
+  const selectedByCategory = new Map();
+  selectedLabelKeys.forEach((labelKey) => {
+    const category = getLabelKeyCategory(labelKey);
+    if (!category) {
+      return;
+    }
+    if (!selectedByCategory.has(category)) {
+      selectedByCategory.set(category, []);
+    }
+    selectedByCategory.get(category).push(labelKey);
+  });
+
+  for (const keys of selectedByCategory.values()) {
+    if (!keys.some((labelKey) => trackLabelKeys.has(labelKey))) {
+      return false;
+    }
+  }
+  return true;
+}
+
 export function renderTrackLabelFilterOptions({
   tracksLabelFilterOptions,
   tracksLabelCatalog,
   selectedTrackFilterLabelKeys,
   selectedMissingTrackFilterCategories,
+  labelFilterMatchMode = "or",
 }) {
   if (!(tracksLabelFilterOptions instanceof HTMLElement)) {
     return;
@@ -118,6 +151,35 @@ export function renderTrackLabelFilterOptions({
     tracksLabelFilterOptions.innerHTML = "<p class=\"empty-state\">No labels configured.</p>";
     return;
   }
+
+  const normalizedMatchMode = labelFilterMatchMode === "and" ? "and" : "or";
+  const matchModeHtml = `
+    <section class="tracks-filter-match-mode">
+      <h4 class="tracks-filter-category-heading">Match mode</h4>
+      <div class="tracks-filter-match-mode-options">
+        <label for="tracks-filter-mode-or" class="tracks-filter-option">
+          <input
+            id="tracks-filter-mode-or"
+            class="tracks-filter-mode-input"
+            type="radio"
+            name="tracks-label-filter-mode"
+            value="or"${normalizedMatchMode === "or" ? " checked" : ""}
+          >
+          <span>OR (within category)</span>
+        </label>
+        <label for="tracks-filter-mode-and" class="tracks-filter-option">
+          <input
+            id="tracks-filter-mode-and"
+            class="tracks-filter-mode-input"
+            type="radio"
+            name="tracks-label-filter-mode"
+            value="and"${normalizedMatchMode === "and" ? " checked" : ""}
+          >
+          <span>AND</span>
+        </label>
+      </div>
+    </section>
+  `;
 
   const categories = [];
   tracksLabelCatalog.forEach((group) => {
@@ -193,7 +255,7 @@ export function renderTrackLabelFilterOptions({
     `;
   }).join("");
 
-  tracksLabelFilterOptions.innerHTML = `${missingCategorySectionHtml}${labelCategorySectionsHtml}`;
+  tracksLabelFilterOptions.innerHTML = `${matchModeHtml}${missingCategorySectionHtml}${labelCategorySectionsHtml}`;
 }
 
 export function updateTracksFilterSummary({
@@ -252,6 +314,7 @@ export function applyTracksFilter({
   tracksFilterCount,
   selectedTrackFilterLabelKeys,
   selectedMissingTrackFilterCategories,
+  labelFilterMatchMode = "or",
   tracksLabelFilterSummary,
   tracksSelectedLabels,
   tracksClearFiltersButton,
@@ -260,13 +323,16 @@ export function applyTracksFilter({
   const query = String(tracksFilterInput instanceof HTMLInputElement ? tracksFilterInput.value : "")
     .trim()
     .toLocaleLowerCase();
+  const matchMode = labelFilterMatchMode === "and" ? "and" : "or";
   trackItems.forEach((item) => {
     const trackMetaBlock = item.querySelector(".track-meta-block");
     const haystack = `${item.textContent || ""} ${trackMetaBlock?.textContent || ""}`.toLocaleLowerCase();
     const textMatches = query ? haystack.includes(query) : true;
     const trackLabelKeys = getTrackItemLabelKeys(item);
-    const labelsMatch = Array.from(selectedTrackFilterLabelKeys).every(
-      (labelKey) => trackLabelKeys.has(labelKey)
+    const labelsMatch = trackMatchesSelectedLabels(
+      trackLabelKeys,
+      selectedTrackFilterLabelKeys,
+      matchMode
     );
     const trackLabelCategories = getTrackItemLabelCategories(item);
     const missingCategoryMatches = Array.from(selectedMissingTrackFilterCategories).every(

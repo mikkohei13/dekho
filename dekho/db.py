@@ -351,41 +351,6 @@ def replace_track_labels(
     )
 
 
-def get_track_ids_matching_all_labels(labels: list[str]) -> list[str]:
-    init_db()
-    normalized_labels = list(dict.fromkeys(labels))
-    if not normalized_labels:
-        with get_connection() as connection:
-            rows = connection.execute(
-                """
-                SELECT track_id
-                FROM tracks_file_data
-                ORDER BY filepath
-                """
-            ).fetchall()
-        return [str(row[0]) for row in rows]
-
-    where_conditions = ", ".join(["?"] * len(normalized_labels))
-    params: list[str | int] = [*normalized_labels]
-    params.append(len(normalized_labels))
-
-    with get_connection() as connection:
-        rows = connection.execute(
-            f"""
-            SELECT tfd.track_id
-            FROM tracks_file_data AS tfd
-            JOIN track_user_data_labels AS tul ON tul.track_id = tfd.track_id
-            JOIN label_definitions AS ld ON ld.id = tul.label_id
-            WHERE ld.key IN ({where_conditions})
-            GROUP BY tfd.track_id
-            HAVING COUNT(DISTINCT ld.id) = ?
-            ORDER BY tfd.filepath
-            """,
-            params,
-        ).fetchall()
-    return [str(row[0]) for row in rows]
-
-
 def get_unknown_label_assignments() -> list[dict[str, str]]:
     init_db()
     allowed = get_allowed_label_keys()
