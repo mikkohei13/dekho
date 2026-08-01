@@ -128,3 +128,4 @@ def iter_label_definitions() -> Iterable[tuple[str, str, str]]:
         category = str(entry["category"])
         for label in entry["labels"]:
             yield str(label["key"]), category, str(label["label"])
+

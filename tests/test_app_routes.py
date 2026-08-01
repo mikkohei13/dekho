@@ -95,6 +95,7 @@ class AppRouteContractTests(unittest.TestCase):
         self.assertIn("Track One", html)
         self.assertIn("✎", html)
         self.assertIn("≣", html)
+        self.assertIn("◈", html)
         self.assertIn("✦", html)
         self.assertIn("★★", html)
         self.assertIn("♪", html)

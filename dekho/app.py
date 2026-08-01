@@ -179,30 +179,38 @@ def create_app() -> Flask:
             label_key_set = {str(key) for key in label_keys if key}
             like_class = ""
             like_stars = 0
+            like_sort = 0
             if "like.like3" in label_key_set:
                 like_class = "like"
                 like_stars = 3
+                like_sort = 5
             elif "like.like2" in label_key_set:
                 like_class = "like"
                 like_stars = 2
+                like_sort = 4
             elif "like.like1" in label_key_set:
                 like_class = "like"
                 like_stars = 1
+                like_sort = 3
             elif "like.like0" in label_key_set:
                 like_class = "like0"
                 like_stars = 1
+                like_sort = 2
             elif "like.not_like" in label_key_set:
                 like_class = "not-like"
                 like_stars = 1
+                like_sort = 1
 
             rows.append(
                 {
                     "display_title": title_new or "Unknown",
                     "has_notes": bool(notes.strip()),
                     "on_playlist": any(key.startswith("playlist.") for key in label_key_set),
+                    "has_type": any(key.startswith("type.") for key in label_key_set),
                     "has_remote": bool(tags.strip()),
                     "like_class": like_class,
                     "like_stars": like_stars,
+                    "like_sort": like_sort,
                     "instrumental": "type.instrumental" in label_key_set,
                 }
             )
