@@ -8,7 +8,7 @@ import dekho.remote_metadata as rm
 
 class FetchSunoTrackMetadataTests(unittest.TestCase):
     def setUp(self):
-        self.fixture_root = Path(__file__).resolve().parents[1]
+        self.fixture_root = Path(__file__).resolve().parent / "testdata"
 
     def _build_flight_html(self, decoded_chunks: list[str]) -> str:
         scripts = "".join(

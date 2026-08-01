@@ -51,16 +51,10 @@ See more details in `ARCHITECTURE.md`.
 ## Tests
 
 ```bash
-uv run python3 -m unittest discover -s tests -v
+uv run -m unittest discover -s tests -v  
 ```
 
 ## Database
-
-Use this command to get more information about the database:
-
-```bash
-uv run dev_db_summary.py
-```
 
 - label_definitions
   • id (INTEGER, NULL PK)
