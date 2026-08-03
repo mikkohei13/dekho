@@ -18,11 +18,11 @@ from xml.etree.ElementTree import Element, ElementTree, SubElement, indent, regi
 DB_PATH = Path("dekho.sqlite3")
 MUSIC_ROOT = Path("music")
 OUTPUT_DIR = Path("export_music")
-OUTPUT_FILE = OUTPUT_DIR / "dekho.rss"
+OUTPUT_FILE = OUTPUT_DIR / "feed.rss"
 OUTPUT_MUSIC_DIR = OUTPUT_DIR / "music"
-MEDIA_URL_PREFIX = "https://www.biomi.org/dekho/"
+MEDIA_URL_PREFIX = "https://www.biomi.org/replayer/export_music/"
 MRSS_NS = "http://search.yahoo.com/mrss/"
-CHANNEL_TITLE = "Dekho Music Library"
+CHANNEL_TITLE = "Replayer Music Library"
 
 
 def _parse_datetime(value: str | None) -> datetime | None:
