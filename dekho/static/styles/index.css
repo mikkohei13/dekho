@@ -796,6 +796,12 @@ body {
   font-size: 0.85rem;
 }
 
+#track-user-data-form .remix-of-missing {
+  color: #ff5c5c;
+  font-weight: 600;
+  margin-left: 0.35rem;
+}
+
 #track-user-data-form input,
 #track-user-data-form textarea {
   width: 100%;

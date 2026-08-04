@@ -146,6 +146,8 @@ export function renderDetails(data, contentPanelBody) {
   const labels = Array.isArray(data.labels) ? data.labels : [];
   const labelCatalog = Array.isArray(data.label_catalog) ? data.label_catalog : [];
   const displayTitle = getDisplayTitle(data) || "Untitled Track";
+  const trackHasRemoteData = hasRemoteTags(tags);
+  const remixOfMissing = trackHasRemoteData && hasCoverClipId && String(remixOf).trim() === "";
 
   if (!(contentPanelBody instanceof HTMLElement)) {
     return;
@@ -155,7 +157,7 @@ export function renderDetails(data, contentPanelBody) {
     <section id="track-info">
       <header class="panel-header track-info-header">
         <h2>
-          ${escapeHtml(displayTitle)}${hasRemoteTags(tags) ? "<span class=\"track-badge remote-tags-badge\" title=\"Has remote data\">✦</span>" : ""}
+          ${escapeHtml(displayTitle)}${trackHasRemoteData ? "<span class=\"track-badge remote-tags-badge\" title=\"Has remote data\">✦</span>" : ""}
         </h2>
         <button id="play-current-track-btn" type="button">▶ Play</button>
       </header>
@@ -165,7 +167,7 @@ export function renderDetails(data, contentPanelBody) {
           <input id="title-new-input" name="title_new" type="text" value="${escapeHtml(titleNew)}">
           <label for="notes-input">notes</label>
           <textarea id="notes-input" name="notes" rows="4">${escapeHtml(notes)}</textarea>
-          <label for="remix-of-input">remix_of</label>
+          <label for="remix-of-input">remix_of${remixOfMissing ? " <span class=\"remix-of-missing\">missing</span>" : ""}</label>
           <input id="remix-of-input" name="remix_of" type="text" value="${escapeHtml(remixOf)}">
           <div class="track-labels">
             <div class="track-labels-groups">
