@@ -6,6 +6,8 @@ LABEL_CATALOG: tuple[dict[str, str | tuple[dict[str, str], ...]], ...] = (
         "display_name": "playlist",
         "labels": (
             {"key": "playlist.story", "label": "soft p/r"},
+            {"key": "playlist.rock", "label": "rock"},
+            {"key": "playlist.dance", "label": "dance"},
             {"key": "playlist.mythical", "label": "mythical"},
             {"key": "playlist.doggerland", "label": "doggerland"},
             {"key": "playlist.shadowrun", "label": "shadowrun"},
