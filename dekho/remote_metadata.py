@@ -8,6 +8,23 @@ PUSH_RE = re.compile(
     re.DOTALL,
 )
 
+# React Flight text blob: "<id>:T<hex-length>,<payload>"
+TEXT_REF_HEAD_RE = re.compile(r"^([0-9A-Za-z]+):T([0-9a-fA-F]+),")
+PROMPT_REF_RE = re.compile(r"^\$([0-9A-Za-z]+)$")
+STANZA_MARKER_RE = re.compile(r"(?:\[[^\]\n]{1,40}\]|\([^\)\n]{1,40}\))")
+FLIGHT_PREFIX_RE = re.compile(r"^[0-9A-Za-z]+:")
+CONTENT_SIGNAL_KEYS = {
+    "prompt",
+    "tags",
+    "negative_tags",
+    "cover_clip_id",
+    "persona",
+}
+MODEL_SIGNAL_KEYS = {
+    "major_model_version",
+    "model_name",
+}
+
 
 def _walk(node: Any):
     if isinstance(node, dict):
@@ -25,24 +42,6 @@ def _read_html(url: str) -> str:
         return response.read().decode("utf-8", errors="replace")
 
 
-TEXT_REF_RE = re.compile(r"^([0-9A-Za-z]+):T[0-9a-fA-F]+,$")
-TEXT_REF_INLINE_RE = re.compile(r"^([0-9A-Za-z]+):T[0-9a-fA-F]+,(.+)$", re.DOTALL)
-PROMPT_REF_RE = re.compile(r"^\$([0-9A-Za-z]+)$")
-STANZA_MARKER_RE = re.compile(r"(?:\[[^\]\n]{1,40}\]|\([^\)\n]{1,40}\))")
-FLIGHT_PREFIX_RE = re.compile(r"^[0-9A-Za-z]+:")
-CONTENT_SIGNAL_KEYS = {
-    "prompt",
-    "tags",
-    "negative_tags",
-    "cover_clip_id",
-    "persona",
-}
-MODEL_SIGNAL_KEYS = {
-    "major_model_version",
-    "model_name",
-}
-
-
 def _looks_like_flight_control_chunk(decoded: str) -> bool:
     for line in decoded.splitlines():
         stripped = line.strip()
@@ -50,6 +49,83 @@ def _looks_like_flight_control_chunk(decoded: str) -> bool:
             continue
         return FLIGHT_PREFIX_RE.match(stripped) is not None
     return False
+
+
+def _is_usable_content_node(node: dict[str, Any]) -> bool:
+    present = CONTENT_SIGNAL_KEYS.intersection(node.keys())
+    if not present:
+        return False
+    # Ignore i18n/UI dicts that only expose a short label like {"prompt":"Prompt"}.
+    if present == {"prompt"}:
+        prompt = node.get("prompt")
+        if not isinstance(prompt, str):
+            return False
+        stripped = prompt.strip()
+        if stripped.startswith("$"):
+            return True
+        return "\n" in stripped or len(stripped) >= 40
+    return True
+
+
+def _consider_candidates(
+    obj: Any,
+    best_content_candidate: dict[str, Any] | None,
+    best_model_candidate: dict[str, Any] | None,
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    for node in _walk(obj):
+        if not isinstance(node, dict):
+            continue
+        present_content_keys = CONTENT_SIGNAL_KEYS.intersection(node.keys())
+        if (
+            present_content_keys
+            and _is_usable_content_node(node)
+            and (
+                best_content_candidate is None
+                or len(present_content_keys)
+                > len(CONTENT_SIGNAL_KEYS.intersection(best_content_candidate.keys()))
+            )
+        ):
+            best_content_candidate = node
+
+        present_model_keys = MODEL_SIGNAL_KEYS.intersection(node.keys())
+        if present_model_keys and (
+            best_model_candidate is None
+            or len(present_model_keys)
+            > len(MODEL_SIGNAL_KEYS.intersection(best_model_candidate.keys()))
+        ):
+            best_model_candidate = node
+    return best_content_candidate, best_model_candidate
+
+
+def _parse_flight_json_line(
+    line: str,
+    best_content_candidate: dict[str, Any] | None,
+    best_model_candidate: dict[str, Any] | None,
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    if ":" not in line:
+        return best_content_candidate, best_model_candidate
+    _, payload = line.split(":", 1)
+    payload = payload.strip()
+    if not payload or payload[0] not in "[{":
+        return best_content_candidate, best_model_candidate
+    try:
+        obj = json.loads(payload)
+    except json.JSONDecodeError:
+        return best_content_candidate, best_model_candidate
+    return _consider_candidates(obj, best_content_candidate, best_model_candidate)
+
+
+def _split_utf8_prefix(text: str, byte_len: int) -> tuple[str, str] | None:
+    """Split off the first ``byte_len`` UTF-8 bytes of ``text``.
+
+    React Flight ``T<hex>`` lengths are UTF-8 byte counts, not Unicode code points.
+    Returns None when ``text`` does not contain enough bytes.
+    """
+    encoded = text.encode("utf-8")
+    if len(encoded) < byte_len:
+        return None
+    prefix = encoded[:byte_len].decode("utf-8")
+    return prefix, text[len(prefix) :]
 
 
 def _extract_from_decoded_chunk(
@@ -60,62 +136,41 @@ def _extract_from_decoded_chunk(
     text_refs: dict[str, str] = {}
     next_pending = pending_text_ref_id
 
-    # Next.js Flight can emit text references in two steps:
-    #   25:T690,        (declares text ref id)
-    #   <next chunk>    (actual text body)
+    # Marker-only refs arrive as: previous chunk ended with "25:T690,"
+    # and the next non-control chunk is the full text body.
     if next_pending and not _looks_like_flight_control_chunk(decoded):
         text_refs[next_pending] = decoded
-        next_pending = None
+        return best_content_candidate, best_model_candidate, text_refs, None
 
-    lines = decoded.splitlines()
-    for index, line in enumerate(lines):
-        inline_match = TEXT_REF_INLINE_RE.match(line.strip())
-        if inline_match:
-            ref_id = inline_match.group(1)
-            first_part = inline_match.group(2)
-            remainder = "\n".join(lines[index + 1 :])
-            text_value = first_part
-            if remainder:
-                text_value = f"{text_value}\n{remainder}" if text_value else remainder
-            text_refs[ref_id] = text_value
-            next_pending = None
+    cursor = 0
+    length = len(decoded)
+    while cursor < length:
+        next_nl = decoded.find("\n", cursor)
+        line_end = length if next_nl < 0 else next_nl
+        line = decoded[cursor:line_end]
+
+        head = TEXT_REF_HEAD_RE.match(line)
+        if head:
+            ref_id = head.group(1)
+            byte_len = int(head.group(2), 16)
+            content_start = cursor + head.end()
+            split = _split_utf8_prefix(decoded[content_start:], byte_len)
+            if split is not None:
+                # Length-prefixed payload in this chunk; more Flight data may follow.
+                text_value, _remainder = split
+                text_refs[ref_id] = text_value
+                cursor = content_start + len(text_value)
+                next_pending = None
+                continue
+
+            # Declared length does not fit: treat as marker for the next text chunk.
+            next_pending = ref_id
             break
 
-        marker_match = TEXT_REF_RE.match(line.strip())
-        if marker_match:
-            next_pending = marker_match.group(1)
-            continue
-
-        if ":" not in line:
-            continue
-        _, payload = line.split(":", 1)
-        payload = payload.strip()
-        if not payload or payload[0] not in "[{":
-            continue
-
-        try:
-            obj = json.loads(payload)
-        except json.JSONDecodeError:
-            continue
-
-        for node in _walk(obj):
-            if not isinstance(node, dict):
-                continue
-            present_content_keys = CONTENT_SIGNAL_KEYS.intersection(node.keys())
-            if present_content_keys and (
-                best_content_candidate is None
-                or len(present_content_keys)
-                > len(CONTENT_SIGNAL_KEYS.intersection(best_content_candidate.keys()))
-            ):
-                best_content_candidate = node
-
-            present_model_keys = MODEL_SIGNAL_KEYS.intersection(node.keys())
-            if present_model_keys and (
-                best_model_candidate is None
-                or len(present_model_keys)
-                > len(MODEL_SIGNAL_KEYS.intersection(best_model_candidate.keys()))
-            ):
-                best_model_candidate = node
+        best_content_candidate, best_model_candidate = _parse_flight_json_line(
+            line, best_content_candidate, best_model_candidate
+        )
+        cursor = line_end + 1 if next_nl >= 0 else length
 
     return best_content_candidate, best_model_candidate, text_refs, next_pending
 
@@ -215,6 +270,21 @@ def _get_first_present_value(
     return None
 
 
+def _extract_persona_name(nodes: list[dict[str, Any] | None]) -> str | None:
+    direct = _get_first_present_value(nodes, ["persona_name"])
+    if direct is not None:
+        return str(direct)
+    for node in nodes:
+        if not isinstance(node, dict):
+            continue
+        persona = node.get("persona")
+        if isinstance(persona, dict):
+            name = persona.get("name")
+            if name is not None:
+                return str(name)
+    return None
+
+
 def fetch_suno_track_metadata(track_url: str) -> dict[str, str | bool | None]:
     if not track_url.startswith(("http://", "https://")):
         raise ValueError("Track URL is missing or invalid.")
@@ -232,8 +302,8 @@ def fetch_suno_track_metadata(track_url: str) -> dict[str, str | bool | None]:
         escaped = match.group(1)
         decoded = json.loads(f'"{escaped}"')
         decoded_chunks.append(decoded)
-        content_candidate, model_candidate, refs, pending_text_ref_id = _extract_from_decoded_chunk(
-            decoded, pending_text_ref_id
+        content_candidate, model_candidate, refs, pending_text_ref_id = (
+            _extract_from_decoded_chunk(decoded, pending_text_ref_id)
         )
         text_refs.update(refs)
 
@@ -257,18 +327,23 @@ def fetch_suno_track_metadata(track_url: str) -> dict[str, str | bool | None]:
     primary_candidate = best_content_candidate or best_model_candidate or {}
     metadata = primary_candidate.get("metadata")
     metadata_node = metadata if isinstance(metadata, dict) else {}
-
-    prompt = primary_candidate.get("prompt", metadata_node.get("prompt"))
-    tags = primary_candidate.get("tags", metadata_node.get("tags"))
-    negative_tags = primary_candidate.get(
-        "negative_tags", metadata_node.get("negative_tags")
+    model_metadata = (
+        best_model_candidate.get("metadata")
+        if isinstance(best_model_candidate, dict)
+        else None
     )
+    model_metadata_node = model_metadata if isinstance(model_metadata, dict) else {}
 
-    persona_name: Any = primary_candidate.get("persona_name")
-    if persona_name is None:
-        persona = primary_candidate.get("persona")
-        if isinstance(persona, dict):
-            persona_name = persona.get("name")
+    lookup_nodes = [
+        primary_candidate,
+        metadata_node,
+        best_model_candidate,
+        model_metadata_node,
+    ]
+    prompt = _get_first_present_value(lookup_nodes, ["prompt"])
+    tags = _get_first_present_value(lookup_nodes, ["tags"])
+    negative_tags = _get_first_present_value(lookup_nodes, ["negative_tags"])
+    persona_name = _extract_persona_name(lookup_nodes)
 
     resolved_prompt = _resolve_prompt_reference(
         str(prompt) if prompt is not None else None, text_refs
@@ -276,12 +351,11 @@ def fetch_suno_track_metadata(track_url: str) -> dict[str, str | bool | None]:
     if _is_invalid_prompt(resolved_prompt):
         fallback_prompt = _find_lyrics_like_text(decoded_chunks, text_refs)
         resolved_prompt = fallback_prompt if fallback_prompt is not None else "failed"
-    has_cover_clip_id = (
-        "cover_clip_id" in metadata_node or "cover_clip_id" in primary_candidate
+    has_cover_clip_id = any(
+        isinstance(node, dict) and "cover_clip_id" in node for node in lookup_nodes
     )
-    model_lookup_nodes = [best_model_candidate, primary_candidate, metadata_node]
     major_model_version = _get_first_present_value(
-        model_lookup_nodes,
+        lookup_nodes,
         [
             "major_model_version",
             "majorModelVersion",
@@ -290,7 +364,7 @@ def fetch_suno_track_metadata(track_url: str) -> dict[str, str | bool | None]:
         ],
     )
     model_name = _get_first_present_value(
-        model_lookup_nodes,
+        lookup_nodes,
         ["model_name", "modelName", "model"],
     )
 
@@ -303,5 +377,5 @@ def fetch_suno_track_metadata(track_url: str) -> dict[str, str | bool | None]:
             str(major_model_version) if major_model_version is not None else None
         ),
         "model_name": str(model_name) if model_name is not None else None,
-        "persona_name": str(persona_name) if persona_name is not None else None,
+        "persona_name": persona_name,
     }

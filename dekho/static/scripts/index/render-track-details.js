@@ -42,17 +42,15 @@ function renderLabelGroups(labelCatalog, selectedLabels) {
         if (!labelKey || !label) {
           return "";
         }
-        const inputId = `track-label-${domSafeValue(labelKey)}`;
         const checked = selectedKeys.has(labelKey) ? " checked" : "";
         return `
-          <label for="${escapeHtml(inputId)}" class="track-label-option">
+          <label class="track-label-option">
             <input
-              id="${escapeHtml(inputId)}"
               class="track-label-input"
               type="checkbox"
               data-label-key="${escapeHtml(labelKey)}"${checked}
             >
-            <span>${escapeHtml(label)}</span>
+            ${escapeHtml(label)}
           </label>
         `;
       })

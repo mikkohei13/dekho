@@ -9,8 +9,8 @@
 **/export/**
 **/export_music/**
 
-temp*.html
-temp*.htm
+
+**/testdata/**
 
 # macOS
 .DS_Store

@@ -32,6 +32,58 @@ class FetchSunoTrackMetadataTests(unittest.TestCase):
         self.assertIsNotNone(result["negative_tags"])
         self.assertIsNotNone(result["prompt"])
 
+    def test_extracts_metadata_from_length_prefixed_inline_text_ref(self):
+        html = (self.fixture_root / "halflight-drive-v3.html").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        with patch.object(rm, "_read_html", return_value=html):
+            result = rm.fetch_suno_track_metadata(
+                "https://suno.com/song/e4ab328f-2cbe-4054-b0a3-b05726f8ca74"
+            )
+
+        self.assertEqual(result["major_model_version"], "v6")
+        self.assertEqual(result["model_name"], "chirp-hawk")
+        self.assertEqual(result["persona_name"], "Sean")
+        self.assertTrue(
+            result["tags"].startswith(
+                "Soft rock, ringing warm electric guitar, steady bass,"
+            )
+        )
+        self.assertTrue(result["negative_tags"].startswith("bittersweet, choir"))
+        self.assertTrue(
+            result["prompt"].startswith(
+                "[Verse 1]\nScreen door slamming, summer running out"
+            )
+        )
+        self.assertIn("Halflight driving, letting go", result["prompt"])
+
+    def test_extracts_metadata_when_lyrics_contain_multibyte_utf8(self):
+        html = (self.fixture_root / "annar-sett-nyklar.html").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        with patch.object(rm, "_read_html", return_value=html):
+            result = rm.fetch_suno_track_metadata(
+                "https://suno.com/song/008cd9c7-02c8-405d-8838-e498bdf219a4"
+            )
+
+        self.assertEqual(result["major_model_version"], "v6")
+        self.assertEqual(result["model_name"], "chirp-hawk")
+        self.assertEqual(result["persona_name"], "Shadowrunner v2")
+        self.assertTrue(
+            result["tags"].startswith(
+                "Soft rock dreamwave ballad, restrained reverb and subtle tape warmth,"
+            )
+        )
+        self.assertEqual(result["negative_tags"], "1980s, retro")
+        self.assertTrue(
+            result["prompt"].startswith(
+                "[Verse 1]\nDhet byrjde medh ein tannbust"
+            )
+        )
+        self.assertIn("ieg gikk aldri heim ein-saam", result["prompt"])
+        self.assertNotIn('42:["$', result["prompt"])
+        self.assertNotEqual(result["prompt"], "Prompt")
+
     def test_resolves_alphanumeric_prompt_reference_from_new_sample(self):
         html = (self.fixture_root / "temp_suno_example_5bfd.html").read_text(
             encoding="utf-8", errors="replace"
@@ -187,6 +239,24 @@ class GetFirstPresentValueTests(unittest.TestCase):
 
     def test_skips_none_nodes(self):
         self.assertIsNone(rm._get_first_present_value([None, None], ["a"]))
+
+
+class SplitUtf8PrefixTests(unittest.TestCase):
+    def test_ascii_splits_by_byte_equals_char(self):
+        prefix, remainder = rm._split_utf8_prefix("abcdef", 3)
+        self.assertEqual(prefix, "abc")
+        self.assertEqual(remainder, "def")
+
+    def test_multibyte_chars_use_utf8_byte_length(self):
+        # "ò" and "—" are 2 and 3 UTF-8 bytes respectively.
+        text = "Sò—x42:next"
+        # Take bytes for "Sò—" only: 1 + 2 + 3 = 6
+        prefix, remainder = rm._split_utf8_prefix(text, 6)
+        self.assertEqual(prefix, "Sò—")
+        self.assertEqual(remainder, "x42:next")
+
+    def test_returns_none_when_not_enough_bytes(self):
+        self.assertIsNone(rm._split_utf8_prefix("å", 5))
 
 
 if __name__ == "__main__":
