@@ -802,7 +802,7 @@ body {
   margin-left: 0.35rem;
 }
 
-#track-user-data-form input,
+#track-user-data-form input:not([type="checkbox"]),
 #track-user-data-form textarea {
   width: 100%;
   border: 1px solid var(--border);
@@ -812,7 +812,7 @@ body {
   background: rgba(12, 16, 24, 0.65);
 }
 
-#track-user-data-form input:focus-visible,
+#track-user-data-form input:not([type="checkbox"]):focus-visible,
 #track-user-data-form textarea:focus-visible {
   outline: none;
   border-color: var(--accent);
@@ -846,20 +846,23 @@ body {
 }
 
 .track-label-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem 0.7rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+  gap: 0.25rem 0.75rem;
 }
 
 .track-label-option {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.4rem;
+  margin: 0;
+  color: var(--text);
   font-size: 0.92rem;
 }
 
 .track-label-option input {
-  width: auto;
+  margin: 0;
+  flex: none;
 }
 
 .track-user-data-actions {
