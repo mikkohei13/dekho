@@ -44,6 +44,16 @@
             </button>
             <button id="recreate-queue-btn" type="button">Recreate from filter</button>
             <button id="resume-queue-btn" type="button">▶ Resume</button>
+            <label class="queue-shuffle-seed-label" for="queue-shuffle-seed">Seed</label>
+            <input
+              id="queue-shuffle-seed"
+              type="number"
+              value="42"
+              step="1"
+              title="Shuffle seed"
+            >
+            <button id="shuffle-queue-btn" type="button">Shuffle</button>
+            <button id="unshuffle-queue-btn" type="button">Unshuffle</button>
           </div>
         </header>
         <div id="queue-drawer-body" hidden>

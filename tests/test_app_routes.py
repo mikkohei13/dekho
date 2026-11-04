@@ -82,7 +82,7 @@ class AppRouteContractTests(unittest.TestCase):
             title_new="Track One",
             notes="some notes",
             remix_of="fe9019aa-debb-4c72-859d-589a38b44835",
-            labels=["like.like2", "playlist.story", "type.instrumental"],
+            labels=["like.like2", "playlist.story", "type.instrumental", "duplicate.duplicate"],
         )
         db.upsert_track_remote_data(
             track_id="track-1",
@@ -106,6 +106,7 @@ class AppRouteContractTests(unittest.TestCase):
         self.assertIn("✦", html)
         self.assertIn("★★", html)
         self.assertIn("♪", html)
+        self.assertIn("⧉", html)
         self.assertIn('class="col-icon stars like"', html)
 
 

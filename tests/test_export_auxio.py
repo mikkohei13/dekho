@@ -89,6 +89,68 @@ class FetchPlaylistExportDataTests(unittest.TestCase):
         self.assertEqual(list(playlists.keys()), ["mythical"])
         self.assertEqual(playlists["mythical"], ["on-playlist"])
 
+    def test_excludes_tracks_with_duplicate_label(self):
+        db.upsert_track(track_id="keep", filepath="keep.mp3", title="Keep")
+        db.upsert_track(track_id="dup", filepath="dup.mp3", title="Dup")
+        db.upsert_track_user_data(
+            track_id="keep",
+            title_new="",
+            notes="",
+            remix_of="",
+            labels=["playlist.mythical", "like.like1"],
+        )
+        db.upsert_track_user_data(
+            track_id="dup",
+            title_new="",
+            notes="",
+            remix_of="",
+            labels=["playlist.mythical", "like.like1", "duplicate.duplicate"],
+        )
+
+        connection = sqlite3.connect(db.DB_PATH)
+        try:
+            tracks, playlists = export_auxio.fetch_playlist_export_data(connection)
+        finally:
+            connection.close()
+
+        self.assertEqual([t["track_id"] for t in tracks], ["keep"])
+        self.assertEqual(playlists["mythical"], ["keep"])
+
+    def test_only_includes_tracks_with_like1_like2_or_like3(self):
+        db.upsert_track(track_id="liked", filepath="liked.mp3", title="Liked")
+        db.upsert_track(track_id="like0", filepath="like0.mp3", title="Like0")
+        db.upsert_track(track_id="unliked", filepath="unliked.mp3", title="Unliked")
+        db.upsert_track_user_data(
+            track_id="liked",
+            title_new="",
+            notes="",
+            remix_of="",
+            labels=["playlist.mythical", "like.like2"],
+        )
+        db.upsert_track_user_data(
+            track_id="like0",
+            title_new="",
+            notes="",
+            remix_of="",
+            labels=["playlist.mythical", "like.like0"],
+        )
+        db.upsert_track_user_data(
+            track_id="unliked",
+            title_new="",
+            notes="",
+            remix_of="",
+            labels=["playlist.mythical"],
+        )
+
+        connection = sqlite3.connect(db.DB_PATH)
+        try:
+            tracks, playlists = export_auxio.fetch_playlist_export_data(connection)
+        finally:
+            connection.close()
+
+        self.assertEqual([t["track_id"] for t in tracks], ["liked"])
+        self.assertEqual(playlists["mythical"], ["liked"])
+
     def test_dedupes_track_within_playlist_and_preserves_order(self):
         db.upsert_track(
             track_id="t1",
@@ -107,14 +169,14 @@ class FetchPlaylistExportDataTests(unittest.TestCase):
             title_new="",
             notes="",
             remix_of="",
-            labels=["playlist.retro"],
+            labels=["playlist.retro", "like.like1"],
         )
         db.upsert_track_user_data(
             track_id="t2",
             title_new="",
             notes="",
             remix_of="",
-            labels=["playlist.retro", "playlist.western"],
+            labels=["playlist.retro", "playlist.western", "like.like3"],
         )
 
         connection = sqlite3.connect(db.DB_PATH)
@@ -157,7 +219,7 @@ class ExportAuxioIntegrationTests(unittest.TestCase):
             title_new="Export Title",
             notes="",
             remix_of="",
-            labels=["playlist.story", "playlist.other"],
+            labels=["playlist.story", "playlist.other", "like.like2"],
         )
 
         exit_code = export_auxio.export_auxio(

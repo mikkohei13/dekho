@@ -74,7 +74,8 @@ def fetch_playlist_export_data(
 ) -> tuple[list[dict[str, object]], OrderedDict[str, list[str]]]:
     """Return (tracks, playlists).
 
-    tracks: unique tracks that have at least one playlist label.
+    tracks: unique tracks that have at least one playlist label, a like1/2/3
+    label, and are not tagged as duplicate.
     playlists: playlist label -> ordered unique track_ids.
     """
     rows = connection.execute(
@@ -91,6 +92,20 @@ def fetch_playlist_export_data(
         JOIN label_definitions AS ld ON ld.id = tul.label_id
         LEFT JOIN track_user_data AS tud ON tud.track_id = tfd.track_id
         WHERE ld.category = 'playlist'
+          AND EXISTS (
+              SELECT 1
+              FROM track_user_data_labels AS tul_like
+              JOIN label_definitions AS ld_like ON ld_like.id = tul_like.label_id
+              WHERE tul_like.track_id = tfd.track_id
+                AND ld_like.key IN ('like.like1', 'like.like2', 'like.like3')
+          )
+          AND NOT EXISTS (
+              SELECT 1
+              FROM track_user_data_labels AS tul_dup
+              JOIN label_definitions AS ld_dup ON ld_dup.id = tul_dup.label_id
+              WHERE tul_dup.track_id = tfd.track_id
+                AND ld_dup.category = 'duplicate'
+          )
         ORDER BY
             ld.label COLLATE NOCASE ASC,
             tfd.date_created ASC,

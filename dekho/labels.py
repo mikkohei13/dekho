@@ -79,6 +79,13 @@ LABEL_CATALOG: tuple[dict[str, str | tuple[dict[str, str], ...]], ...] = (
             {"key": "issue.other", "label": "other issue"},
         ),
     },
+    {
+        "category": "duplicate",
+        "display_name": "duplicate",
+        "labels": (
+            {"key": "duplicate.duplicate", "label": "duplicate"},
+        ),
+    },
 )
 
 

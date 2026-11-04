@@ -42,20 +42,25 @@ export function createUiState() {
     selectedMissingTrackFilterCategories: new Set(),
     labelFilterMatchMode: "or",
     queueTrackIds: [],
+    queueNaturalTrackIds: [],
     queueIndex: -1,
     queueStatus: "idle",
     playbackMode: "none",
     queueNotice: "",
     lastQueueSnapshotMeta: null,
+    queueShuffled: false,
+    queueShuffleSeed: 42,
   };
 }
 
 export function clearQueue(state) {
   state.queueTrackIds = [];
+  state.queueNaturalTrackIds = [];
   state.queueIndex = -1;
   state.queueStatus = "idle";
   state.queueNotice = "";
   state.lastQueueSnapshotMeta = null;
+  state.queueShuffled = false;
 }
 
 export function setQueueSnapshot(state, trackIds, queueIndex = 0) {
@@ -63,6 +68,8 @@ export function setQueueSnapshot(state, trackIds, queueIndex = 0) {
     ? trackIds.filter((trackId) => typeof trackId === "string" && trackId.trim() !== "")
     : [];
   state.queueTrackIds = normalizedTrackIds;
+  state.queueNaturalTrackIds = [...normalizedTrackIds];
+  state.queueShuffled = false;
   if (normalizedTrackIds.length === 0) {
     state.queueIndex = -1;
     state.queueStatus = "idle";
@@ -76,6 +83,26 @@ export function setQueueSnapshot(state, trackIds, queueIndex = 0) {
     createdAt: Date.now(),
     count: normalizedTrackIds.length,
   };
+}
+
+export function reorderQueue(state, nextIds) {
+  const normalizedTrackIds = Array.isArray(nextIds)
+    ? nextIds.filter((trackId) => typeof trackId === "string" && trackId.trim() !== "")
+    : [];
+  const currentTrackId = state.queueIndex >= 0
+    ? state.queueTrackIds[state.queueIndex]
+    : null;
+  state.queueTrackIds = normalizedTrackIds;
+  if (normalizedTrackIds.length === 0) {
+    state.queueIndex = -1;
+    return;
+  }
+  if (currentTrackId) {
+    const remappedIndex = normalizedTrackIds.indexOf(currentTrackId);
+    state.queueIndex = remappedIndex >= 0 ? remappedIndex : 0;
+    return;
+  }
+  state.queueIndex = Math.min(Math.max(state.queueIndex, 0), normalizedTrackIds.length - 1);
 }
 
 export function hasQueueTracks(state) {

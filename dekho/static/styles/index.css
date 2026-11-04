@@ -374,6 +374,20 @@ body {
   flex-wrap: wrap;
 }
 
+.queue-shuffle-seed-label {
+  font-size: 0.82rem;
+  color: #b9d0ff;
+}
+
+#queue-shuffle-seed {
+  width: 4.5rem;
+  border: 1px solid rgba(147, 164, 197, 0.28);
+  border-radius: 10px;
+  padding: 0.48rem 0.5rem;
+  color: var(--text);
+  background: rgba(13, 16, 22, 0.92);
+}
+
 #queue-drawer-toggle-btn {
   white-space: nowrap;
 }
@@ -671,6 +685,8 @@ body {
 #queue-drawer-toggle-btn,
 #recreate-queue-btn,
 #resume-queue-btn,
+#shuffle-queue-btn,
+#unshuffle-queue-btn,
 #tracks-label-filter-summary,
 #tracks-clear-filters-btn,
 .scan-link {
@@ -713,6 +729,10 @@ body {
 #recreate-queue-btn:focus-visible,
 #resume-queue-btn:hover,
 #resume-queue-btn:focus-visible,
+#shuffle-queue-btn:hover,
+#shuffle-queue-btn:focus-visible,
+#unshuffle-queue-btn:hover,
+#unshuffle-queue-btn:focus-visible,
 #tracks-label-filter-summary:hover,
 #tracks-label-filter-summary:focus-visible,
 #tracks-clear-filters-btn:not(:disabled):hover,
@@ -730,7 +750,9 @@ body {
 
 #prev-queue-track-btn:disabled,
 #next-queue-track-btn:disabled,
-#resume-queue-btn:disabled {
+#resume-queue-btn:disabled,
+#shuffle-queue-btn:disabled,
+#unshuffle-queue-btn:disabled {
   opacity: 0.45;
   cursor: default;
 }

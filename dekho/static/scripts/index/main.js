@@ -25,12 +25,14 @@ import {
 import {
   confirmDiscardUnsavedChanges,
   hasQueueTracks,
+  reorderQueue,
   setQueueSnapshot,
   createTrackLabelMap,
   createUiState,
   markTrackUserDataSaved,
   readLabelCatalog,
 } from "./state.js";
+import { parseShuffleSeed, sortTrackIdsBySeed } from "./queue-shuffle.js";
 import { escapeHtml, parseLabelKeys } from "./dom.js";
 
 const scanLink = document.querySelector(".scan-link");
@@ -51,6 +53,9 @@ const queueEmptyState = document.getElementById("queue-empty-state");
 const queueNotice = document.getElementById("queue-notice");
 const recreateQueueButton = document.getElementById("recreate-queue-btn");
 const resumeQueueButton = document.getElementById("resume-queue-btn");
+const queueShuffleSeedInput = document.getElementById("queue-shuffle-seed");
+const shuffleQueueButton = document.getElementById("shuffle-queue-btn");
+const unshuffleQueueButton = document.getElementById("unshuffle-queue-btn");
 const contentPanel = document.getElementById("content-panel");
 const contentPanelBody = document.getElementById("content-panel-body");
 const persistentTrackHeader = document.getElementById("persistent-track-header");
@@ -152,6 +157,12 @@ function updateQueueButtonsState() {
   const hasVisibleTracks = getVisibleTrackIds(trackItems).length > 0;
   if (recreateQueueButton instanceof HTMLButtonElement) {
     recreateQueueButton.disabled = !hasVisibleTracks;
+  }
+  if (shuffleQueueButton instanceof HTMLButtonElement) {
+    shuffleQueueButton.disabled = !hasQueue;
+  }
+  if (unshuffleQueueButton instanceof HTMLButtonElement) {
+    unshuffleQueueButton.disabled = !hasQueue || !state.queueShuffled;
   }
   if (previousQueueTrackButton instanceof HTMLButtonElement) {
     previousQueueTrackButton.disabled = !isQueuePlayback;
@@ -291,6 +302,39 @@ function resumeQueue() {
   }
   const resumeIndex = state.queueIndex >= 0 ? state.queueIndex : 0;
   playQueueAtIndex(resumeIndex);
+}
+
+async function shuffleQueue() {
+  if (!hasQueueTracks(state)) {
+    setQueueNotice("Queue is empty.");
+    renderQueueState();
+    return;
+  }
+  const seedValue = queueShuffleSeedInput instanceof HTMLInputElement
+    ? queueShuffleSeedInput.value
+    : state.queueShuffleSeed;
+  const seed = parseShuffleSeed(seedValue, 42);
+  state.queueShuffleSeed = seed;
+  if (queueShuffleSeedInput instanceof HTMLInputElement) {
+    queueShuffleSeedInput.value = String(seed);
+  }
+  const shuffledIds = await sortTrackIdsBySeed(state.queueNaturalTrackIds, seed);
+  reorderQueue(state, shuffledIds);
+  state.queueShuffled = true;
+  setQueueNotice("");
+  renderQueueState();
+}
+
+function unshuffleQueue() {
+  if (!hasQueueTracks(state)) {
+    setQueueNotice("Queue is empty.");
+    renderQueueState();
+    return;
+  }
+  reorderQueue(state, state.queueNaturalTrackIds);
+  state.queueShuffled = false;
+  setQueueNotice("");
+  renderQueueState();
 }
 
 function moveQueue(delta) {
@@ -438,6 +482,8 @@ bindQueuePanelEvents({
   onToggleQueueDrawer: toggleQueueDrawer,
   onRecreateQueueFromFilter: recreateQueueFromFilter,
   onResumeQueue: resumeQueue,
+  onShuffleQueue: shuffleQueue,
+  onUnshuffleQueue: unshuffleQueue,
   onPlayQueueIndex: playQueueAtIndex,
   onShowQueueTrack: showQueueTrackInContentPanel,
 });

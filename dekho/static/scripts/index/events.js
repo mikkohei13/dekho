@@ -236,6 +236,8 @@ export function bindQueuePanelEvents({
   onToggleQueueDrawer,
   onRecreateQueueFromFilter,
   onResumeQueue,
+  onShuffleQueue,
+  onUnshuffleQueue,
   onPlayQueueIndex,
   onShowQueueTrack,
 }) {
@@ -257,6 +259,14 @@ export function bindQueuePanelEvents({
     }
     if (target.id === "resume-queue-btn") {
       onResumeQueue();
+      return;
+    }
+    if (target.id === "shuffle-queue-btn") {
+      onShuffleQueue?.();
+      return;
+    }
+    if (target.id === "unshuffle-queue-btn") {
+      onUnshuffleQueue?.();
       return;
     }
     const playButton = target.closest(".queue-track-play-btn");

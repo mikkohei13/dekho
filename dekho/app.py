@@ -214,6 +214,7 @@ def create_app() -> Flask:
                     "like_stars": like_stars,
                     "like_sort": like_sort,
                     "instrumental": "type.instrumental" in label_key_set,
+                    "is_duplicate": "duplicate.duplicate" in label_key_set,
                 }
             )
 

@@ -25,6 +25,7 @@
           <th data-sort-type="num" title="Has remote data" class="sortable">Remote</th>
           <th data-sort-type="num" title="Like rating" class="sortable">Stars</th>
           <th data-sort-type="num" title="Instrumental" class="sortable">Instr.</th>
+          <th data-sort-type="num" title="Duplicate" class="sortable">Dup.</th>
         </tr>
       </thead>
       <tbody>
@@ -40,10 +41,11 @@
               {% if track.like_stars %}{{ "★" * track.like_stars }}{% endif %}
             </td>
             <td class="col-icon" data-sort="{{ 1 if track.instrumental else 0 }}">{% if track.instrumental %}♪{% endif %}</td>
+            <td class="col-icon" data-sort="{{ 1 if track.is_duplicate else 0 }}">{% if track.is_duplicate %}⧉{% endif %}</td>
           </tr>
         {% else %}
           <tr>
-            <td colspan="8">No tracks found.</td>
+            <td colspan="9">No tracks found.</td>
           </tr>
         {% endfor %}
       </tbody>
